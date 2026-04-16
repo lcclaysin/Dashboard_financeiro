@@ -275,4 +275,7 @@ table th:last-child, table td:last-child { width: 60px; text-align: center; }
         letter-spacing: 0.5px;
         text-align: left;
     }
+    /* Dá mais espaço interno no modal para telas pequenas */
+    .modal-box { padding: 20px 15px; width: 95%; 
+    }
 }
