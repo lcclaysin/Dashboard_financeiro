@@ -21,30 +21,33 @@ body {
 }
 
 /* --- CABEÇALHO E BOTÃO DE TEMA --- */
-.top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.top-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 5px; 
+}
 
-/* Botão de Tema - Padrão Desktop (Discreto e solto no cabeçalho) */
+/* Botão de Tema - Alinhado com o título e rola junto com a página */
 .btn-theme { 
-    position: static; 
     width: 45px; 
     height: 45px; 
     border-radius: 50%; 
-    background: transparent; 
-    border: 1px solid #dfe6e9; 
-    font-size: 18px; 
+    background-color: var(--card-bg); 
+    border: 2px solid var(--cor-primaria); 
+    font-size: 20px; 
     color: var(--texto); 
     cursor: pointer; 
     transition: 0.3s; 
     display: flex;
     justify-content: center;
     align-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
 .btn-theme:hover { 
     color: var(--cor-primaria); 
-    background-color: var(--card-bg);
-    border-color: var(--cor-primaria);
-    transform: rotate(15deg); 
+    transform: scale(1.1) rotate(15deg); 
 }
 
 /* --- MODO ESCURO (DARK THEME) --- */
