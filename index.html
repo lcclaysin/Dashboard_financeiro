@@ -118,9 +118,11 @@
                 <button onclick="fecharModal()" class="btn-fechar">&times;</button>
             </div>
             
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <input type="text" id="nova-categoria" placeholder="Nova categoria..." onkeypress="if(event.key === 'Enter') adicionarCategoria()" style="flex: 1; padding: 8px; border: 1px solid #dfe6e9; border-radius: 5px;">
-                <button onclick="adicionarCategoria()" style="background: #00b894; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Salvar</button>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+                <input type="color" id="cor-categoria" class="cor-picker" value="#0984e3" title="Escolher cor da tag">
+                
+                <input type="text" id="nova-categoria" placeholder="Nova categoria..." onkeypress="if(event.key === 'Enter') adicionarCategoria()" style="flex: 1; padding: 8px 15px; border: 1px solid #edf2f7; border-radius: 10px; height: 42px; box-sizing: border-box; font-family: inherit;">
+                <button onclick="adicionarCategoria()" style="background: var(--cor-primaria); color: white; border: none; padding: 0 15px; border-radius: 10px; height: 42px; cursor: pointer; font-weight: 600;">Salvar</button>
             </div>
 
             <ul id="lista-categorias" style="list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto;"></ul>
