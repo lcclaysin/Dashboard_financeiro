@@ -1,6 +1,15 @@
+// --- 1. BANCOS DE DADOS ---
+let transacoes = JSON.parse(localStorage.getItem('bancoDashboard')) || [];
+let categorias = JSON.parse(localStorage.getItem('categoriasDashboard')) || [];
+let coresCategorias = JSON.parse(localStorage.getItem('coresDashboardCores')) || { 'Geral': '#b2bec3' };
+
+if (!categorias.includes('Geral')) {
+    categorias.unshift('Geral');
+    localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
+}
+
 // --- 0. GESTÃO DO TEMA CLARO/ESCURO ---
 const temaSalvo = localStorage.getItem('temaDashboard');
-// Se o último tema salvo foi dark, ou se o celular da pessoa já usa modo escuro por padrão
 if (temaSalvo === 'dark' || (!temaSalvo && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     document.body.classList.add('dark-theme');
 }
@@ -8,11 +17,8 @@ if (temaSalvo === 'dark' || (!temaSalvo && window.matchMedia('(prefers-color-sch
 function toggleTheme() {
     const body = document.body;
     const btnIcon = document.querySelector('#theme-toggle i');
-    
-    // Liga/Desliga a classe de tema escuro
     body.classList.toggle('dark-theme');
     
-    // Troca o ícone e salva no banco de dados
     if (body.classList.contains('dark-theme')) {
         btnIcon.classList.replace('fa-moon', 'fa-sun');
         localStorage.setItem('temaDashboard', 'dark');
@@ -22,30 +28,17 @@ function toggleTheme() {
     }
 }
 
-// Garante que o ícone esteja certo quando a página carregar
 window.addEventListener('DOMContentLoaded', () => {
     const btnIcon = document.querySelector('#theme-toggle i');
     if (document.body.classList.contains('dark-theme')) {
         btnIcon.classList.replace('fa-moon', 'fa-sun');
     }
 });
-// -----------------------------------------
-
-// --- 1. BANCOS DE DADOS ---
-let transacoes = JSON.parse(localStorage.getItem('bancoDashboard')) || [];
-let categorias = JSON.parse(localStorage.getItem('categoriasDashboard')) || [];
-
-
-// Garante que "Geral" sempre exista
-if (!categorias.includes('Geral')) {
-    categorias.unshift('Geral');
-    localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
-}
 
 let metaNome = localStorage.getItem('metaNome') || 'Meta do Período';
 let metaFinanceira = parseFloat(localStorage.getItem('metaFinanceira')) || 0;
 let meuGrafico = null;
-let meuGraficoBarras = null; // <- NOVA VARIÁVEL
+let meuGraficoBarras = null;
 
 // --- 2. CAPTURANDO ELEMENTOS ---
 const form = document.getElementById('form-transacao');
@@ -68,7 +61,6 @@ function getDataHoje() {
     return `${ano}-${mes}-${dia}`;
 }
 
-// Injeta a data de hoje logo que abre
 document.getElementById('data').value = getDataHoje();
 
 filtroTipo.addEventListener('change', atualizarTela);
@@ -76,10 +68,36 @@ filtroCategoria.addEventListener('change', atualizarTela);
 filtroDataInicio.addEventListener('change', atualizarTela);
 filtroDataFim.addEventListener('change', atualizarTela);
 
+// --- FUNÇÃO MATEMÁTICA: CONTRASTE AUTOMÁTICO (YIQ) ---
+function getCorTextoIdeal(hexColor) {
+    if (!hexColor) return '#ffffff';
+    hexColor = hexColor.replace('#', '');
+    
+    // Converte HEX para RGB
+    const r = parseInt(hexColor.substr(0, 2), 16);
+    const g = parseInt(hexColor.substr(2, 2), 16);
+    const b = parseInt(hexColor.substr(4, 2), 16);
+    
+    // Calcula a luminosidade (Fórmula YIQ de percepção humana)
+    const luminosidade = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    
+    // Retorna Preto Chumbo se o fundo for claro, e Branco se o fundo for escuro
+    return (luminosidade > 128) ? '#2d3436' : '#ffffff';
+}
+
+// --- FUNÇÃO VISUAL: COLORE A CAIXA DE SELEÇÃO ---
+function atualizarCorDaCaixaDeSelecao() {
+    const select = document.getElementById('categoria');
+    const cor = coresCategorias[select.value] || '#b2bec3';
+    // Coloca uma borda grossa na esquerda com a cor da categoria
+    select.style.borderLeft = `6px solid ${cor}`;
+}
+document.getElementById('categoria').addEventListener('change', atualizarCorDaCaixaDeSelecao);
+
 // --- 4. GESTÃO DE METAS ---
 function definirMeta() {
     const novoNome = prompt("Como se chama esta meta? (ex: Meta de Abril)", metaNome);
-    if (novoNome === null) return; // Se o usuário apertar cancelar
+    if (novoNome === null) return; 
     
     const novoValor = prompt(`Qual o valor para "${novoNome}"?`, metaFinanceira);
     if (novoValor !== null && !isNaN(novoValor)) {
@@ -87,7 +105,7 @@ function definirMeta() {
         metaFinanceira = parseFloat(novoValor);
         localStorage.setItem('metaNome', metaNome);
         localStorage.setItem('metaFinanceira', metaFinanceira);
-        atualizarTela(); // Atualiza a barra de progresso na hora
+        atualizarTela(); 
     }
 }
 
@@ -103,7 +121,7 @@ function atualizarProgressoMeta(faturamentoTotal) {
         if (porcentagem > 100) porcentagem = 100;
 
         barra.style.width = `${porcentagem}%`;
-        barra.style.backgroundColor = porcentagem >= 100 ? '#6c5ce7' : '#00b894';
+        barra.style.background = porcentagem >= 100 ? 'linear-gradient(135deg, #00b894, #55efc4)' : 'var(--gradiente-meta)';
         texto.innerText = `${porcentagem.toFixed(1)}% atingido`;
     } else {
         barra.style.width = '0%';
@@ -111,8 +129,8 @@ function atualizarProgressoMeta(faturamentoTotal) {
     }
 }
 
-// --- 5. GESTÃO DE CATEGORIAS (MODAL COM DRAG & DROP) ---
-let sortableInstance = null; // Variável para guardar a animação
+// --- 5. GESTÃO DE CATEGORIAS ---
+let sortableInstance = null;
 
 function atualizarListasDeCategorias() {
     const selectForm = document.getElementById('categoria');
@@ -126,26 +144,31 @@ function atualizarListasDeCategorias() {
     listaModal.innerHTML = '';
 
     categorias.forEach((cat) => {
-        selectForm.innerHTML += `<option value="${cat}">${cat}</option>`;
+        let corDaCategoria = coresCategorias[cat] || '#b2bec3';
+        
+        // Pinta o texto da opção no menu
+        selectForm.innerHTML += `<option value="${cat}" style="color: ${corDaCategoria}; font-weight: 600;">${cat}</option>`;
         selectFiltro.innerHTML += `<option value="${cat}">${cat}</option>`;
         
-        // Criamos o HTML de cada item. Note que adicionamos o data-nome para o sistema saber quem é quem
+        let htmlBolinhaColorida = `<span style="width: 12px; height: 12px; border-radius: 50%; background-color: ${corDaCategoria}; display: inline-block;"></span>`;
+
         if (cat !== 'Geral') {
             listaModal.innerHTML += `
                 <li class="item-categoria drag-item" data-nome="${cat}">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <i class="fa-solid fa-grip-lines drag-handle" title="Arraste para reordenar"></i>
-                        <span>${cat}</span>
+                        ${htmlBolinhaColorida}
+                        <span style="font-weight: 500;">${cat}</span>
                     </div>
                     <button class="btn-del-cat" onclick="removerCategoria('${cat}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </li>
             `;
         } else {
-            // A categoria 'Geral' não tem o ícone de arrastar (fica fixa)
             listaModal.innerHTML += `
                 <li class="item-categoria fixed-item" data-nome="${cat}">
                     <div style="display: flex; align-items: center; gap: 10px; padding-left: 26px;">
-                        <span>${cat}</span>
+                        ${htmlBolinhaColorida}
+                        <span style="font-weight: 500;">${cat}</span>
                     </div>
                     <span style="color: #b2bec3; font-size: 12px; margin-right: 10px;">(Padrão Fixo)</span>
                 </li>
@@ -156,25 +179,19 @@ function atualizarListasDeCategorias() {
     if (categorias.includes(categoriaSelecionadaAntes)) {
         selectForm.value = categoriaSelecionadaAntes;
     }
-
-    // ATIVA A MÁGICA DO ARRASTAR E SOLTAR
-    if (sortableInstance) sortableInstance.destroy(); // Reseta se já existir
     
+    atualizarCorDaCaixaDeSelecao(); // Chama a função para já pintar a caixa atual
+
+    if (sortableInstance) sortableInstance.destroy(); 
     sortableInstance = new Sortable(listaModal, {
-        animation: 150, // Velocidade da animação em milissegundos
-        handle: '.drag-handle', // Só permite arrastar se clicar no ícone dos tracinhos
-        filter: '.fixed-item', // Impede que a categoria 'Geral' seja arrastada
+        animation: 150, handle: '.drag-handle', filter: '.fixed-item',
         onEnd: function () {
-            // Quando o usuário solta o item, o sistema lê a nova ordem de cima para baixo
             const novaOrdem = [];
             document.querySelectorAll('#lista-categorias .item-categoria').forEach(li => {
                 novaOrdem.push(li.getAttribute('data-nome'));
             });
-            
             categorias = novaOrdem;
             localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
-            
-            // Atualiza os <select> do formulário para refletir a nova ordem
             atualizarListasDeCategorias(); 
         }
     });
@@ -185,29 +202,39 @@ function fecharModal() { document.getElementById('modal-categorias').style.displ
 
 function adicionarCategoria() {
     const input = document.getElementById('nova-categoria');
+    const inputCor = document.getElementById('cor-categoria');
+    
     let nome = input.value.trim();
+    let corEscolhida = inputCor.value; 
+
     if (nome) nome = nome.charAt(0).toUpperCase() + nome.slice(1); 
 
     if (nome !== '' && !categorias.includes(nome)) {
         categorias.push(nome);
+        coresCategorias[nome] = corEscolhida; 
+        
         localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
+        localStorage.setItem('coresDashboardCores', JSON.stringify(coresCategorias)); 
+        
         input.value = '';
         atualizarListasDeCategorias();
+        atualizarTela(); 
     }
     input.focus();
 }
 
-// A função de remover agora busca pelo NOME da categoria e não mais pela posição (index)
 function removerCategoria(nomeCategoria) {
     if (nomeCategoria === 'Geral') return; 
-    
-    // Filtra a lista, mantendo todas as categorias MENOS a que foi clicada
     categorias = categorias.filter(cat => cat !== nomeCategoria);
     
+    delete coresCategorias[nomeCategoria];
+
     localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
+    localStorage.setItem('coresDashboardCores', JSON.stringify(coresCategorias));
     atualizarListasDeCategorias();
+    atualizarTela();
 }
-// NOTA: Você pode apagar a função moverCategoria(index, direcao) antiga, não precisamos mais dela!
+
 // --- 6. LÓGICA DE TRANSAÇÕES ---
 form.addEventListener('submit', function(evento) {
     evento.preventDefault(); 
@@ -222,11 +249,10 @@ form.addEventListener('submit', function(evento) {
     localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
 
     atualizarTela();
-    
-    // Limpa mantendo a memória prática
     form.reset();
     document.getElementById('data').value = getDataHoje();
     document.getElementById('categoria').value = categoriaSelecionada; 
+    atualizarCorDaCaixaDeSelecao(); // Garante que a borda continue certa após enviar
 });
 
 function removerTransacao(index) {
@@ -238,8 +264,7 @@ function removerTransacao(index) {
 function atualizarTela() {
     corpoTabela.innerHTML = '';
     let totalReceitas = 0; let totalDespesas = 0;
-
-    let transacoesFiltradas = []; // <-- CORREÇÃO 1: Criamos a lista vazia aqui
+    let transacoesFiltradas = [];
 
     transacoes.forEach((transacao, index) => {
         let passaTipo = (filtroTipo.value === 'todos' || transacao.tipo === filtroTipo.value);
@@ -250,22 +275,28 @@ function atualizarTela() {
         if (filtroDataFim.value && transacao.data > filtroDataFim.value) passaData = false;
 
         if (passaTipo && passaData && passaCategoria) {
-            
-            transacoesFiltradas.push(transacao); // <-- CORREÇÃO 2: Guardamos a transação na lista do gráfico
+            transacoesFiltradas.push(transacao);
 
             if(transacao.tipo === 'receita') totalReceitas += transacao.valor;
             else totalDespesas += transacao.valor;
 
             let dataFormatada = transacao.data ? transacao.data.split('-').reverse().join('/') : 'Sem Data';
             let catVisual = transacao.categoria ? transacao.categoria : 'Geral'; 
+            
+            let corDaTag = coresCategorias[catVisual] || '#b2bec3';
+            let corDoTextoIdeal = getCorTextoIdeal(corDaTag); // Chama o cérebro matemático da cor
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${dataFormatada}</td>
-                <td>${transacao.descricao}</td>
-                <td><span style="background: #f1f2f6; padding: 3px 8px; border-radius: 10px; font-size: 12px; color: #2d3436;">${catVisual}</span></td>
-                <td style="color: ${transacao.tipo === 'receita' ? '#00b894' : '#d63031'}">${transacao.tipo.toUpperCase()}</td>
-                <td>R$ ${transacao.valor.toFixed(2)}</td>
+                <td style="font-weight: 500;">${transacao.descricao}</td>
+                <td>
+                    <span style="background: ${corDaTag}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corDoTextoIdeal}; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: 0.5px;">
+                        ${catVisual}
+                    </span>
+                </td>
+                <td style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600; font-size: 12px;">${transacao.tipo.toUpperCase()}</td>
+                <td style="font-weight: 700;">R$ ${transacao.valor.toFixed(2)}</td>
                 <td style="text-align: center;">
                     <button class="btn-excluir" onclick="removerTransacao(${index})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
@@ -278,92 +309,54 @@ function atualizarTela() {
     displayDespesa.innerText = `R$ ${totalDespesas.toFixed(2)}`;
     const lucro = totalReceitas - totalDespesas;
     displayLucro.innerText = `R$ ${lucro.toFixed(2)}`;
-    displayLucro.style.color = lucro >= 0 ? '#1098ce' : '#d63031';
+    displayLucro.style.color = lucro >= 0 ? 'var(--texto)' : 'var(--cor-alerta)';
 
     atualizarProgressoMeta(totalReceitas);
     atualizarGrafico(totalReceitas, totalDespesas);
-    
-    // Agora ele sabe quem é "transacoesFiltradas" e vai desenhar o gráfico!
-    atualizarGraficoBarras(transacoesFiltradas); 
+    atualizarGraficoBarras(transacoesFiltradas);
 }
-// --- 7. GRÁFICO ---
+
+// --- 7. GRÁFICOS ---
 function atualizarGrafico(receitas, despesas) {
     const ctx = document.getElementById('meuGrafico').getContext('2d');
     if (meuGrafico) { meuGrafico.destroy(); }
-
     meuGrafico = new Chart(ctx, {
         type: 'doughnut',
-        data: {
-            labels: ['Receitas', 'Despesas'],
-            datasets: [{
-                data: [receitas, despesas],
-                backgroundColor: ['#00b894', '#d63031'],
-                borderWidth: 0
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Proporção do Filtro Atual' } } }
+        data: { labels: ['Receitas', 'Despesas'], datasets: [{ data: [receitas, despesas], backgroundColor: ['#00b894', '#ff7675'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Proporção do Filtro Atual' } }, cutout: '70%' }
     });
 }
 
-// --- 7.5 GRÁFICO DE BARRAS (ANÁLISE DE CATEGORIAS) ---
 function atualizarGraficoBarras(listaFiltrada) {
     const ctx = document.getElementById('graficoBarras').getContext('2d');
     if (meuGraficoBarras) { meuGraficoBarras.destroy(); }
 
-    // 1. Agrupar os valores por categoria
     const resumoCategorias = {};
-    
     listaFiltrada.forEach(t => {
         const cat = t.categoria || 'Geral';
-        if (!resumoCategorias[cat]) {
-            resumoCategorias[cat] = { receita: 0, despesa: 0 };
-        }
-        if (t.tipo === 'receita') {
-            resumoCategorias[cat].receita += t.valor;
-        } else {
-            resumoCategorias[cat].despesa += t.valor;
-        }
+        if (!resumoCategorias[cat]) { resumoCategorias[cat] = { receita: 0, despesa: 0 }; }
+        if (t.tipo === 'receita') { resumoCategorias[cat].receita += t.valor; } 
+        else { resumoCategorias[cat].despesa += t.valor; }
     });
 
-    // 2. Separar os dados para o formato que o Chart.js entende
     const labels = Object.keys(resumoCategorias);
     const dadosReceitas = labels.map(cat => resumoCategorias[cat].receita);
     const dadosDespesas = labels.map(cat => resumoCategorias[cat].despesa);
 
-    // 3. Desenhar o Gráfico
     meuGraficoBarras = new Chart(ctx, {
-        type: 'bar', // Tipo barra
+        type: 'bar',
         data: {
-            labels: labels, // Ex: ['iFood', 'Uber', 'Geral']
+            labels: labels,
             datasets: [
-                {
-                    label: 'Receitas',
-                    data: dadosReceitas,
-                    backgroundColor: '#00b894',
-                    borderRadius: 4
-                },
-                {
-                    label: 'Despesas',
-                    data: dadosDespesas,
-                    backgroundColor: '#d63031',
-                    borderRadius: 4
-                }
+                { label: 'Receitas', data: dadosReceitas, backgroundColor: '#00b894', borderRadius: 6 },
+                { label: 'Despesas', data: dadosDespesas, backgroundColor: '#ff7675', borderRadius: 6 }
             ]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            plugins: { 
-                title: { display: true, text: 'Desempenho por Categoria' } 
-            },
-            scales: {
-                y: { beginAtZero: true } // Garante que as barras comecem do zero
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Desempenho por Categoria' } }, scales: { y: { beginAtZero: true } } }
     });
 }
 
-// --- 8. EXPORTAR PDF OFICIAL (COM ECONOMIA DE TINTA) ---
+// --- 8. EXPORTAR PDF ---
 function gerarPDF() {
     const dataHoje = new Date();
     const dia = String(dataHoje.getDate()).padStart(2, '0');
@@ -381,45 +374,29 @@ function gerarPDF() {
     const colunasAcoes = document.querySelectorAll('th:last-child, td:last-child');
     const tituloOriginal = document.querySelector('.tabela-header h3');
 
-    // TRUQUE DA ECONOMIA DE TINTA: Salva se estava escuro e força o modo claro
     const body = document.body;
     const estavaEscuro = body.classList.contains('dark-theme');
-    if (estavaEscuro) {
-        body.classList.remove('dark-theme');
-    }
+    if (estavaEscuro) { body.classList.remove('dark-theme'); }
 
     const dtInicioRaw = document.getElementById('filtro-data-inicio').value;
     const dtFimRaw = document.getElementById('filtro-data-fim').value;
-    
-    let textoPeriodo = (!dtInicioRaw && !dtFimRaw) ? "Todo o período" : 
-        `${dtInicioRaw ? dtInicioRaw.split('-').reverse().join('/') : '-'} até ${dtFimRaw ? dtFimRaw.split('-').reverse().join('/') : 'Hoje'}`;
-    
-    const selTipo = document.getElementById('filtro-tipo');
-    const selCat = document.getElementById('filtro-categoria');
-    const txtTipo = selTipo.options[selTipo.selectedIndex].text;
-    const txtCat = selCat.options[selCat.selectedIndex].text;
+    let textoPeriodo = (!dtInicioRaw && !dtFimRaw) ? "Todo o período" : `${dtInicioRaw ? dtInicioRaw.split('-').reverse().join('/') : '-'} até ${dtFimRaw ? dtFimRaw.split('-').reverse().join('/') : 'Hoje'}`;
+    const selTipo = document.getElementById('filtro-tipo'); const selCat = document.getElementById('filtro-categoria');
+    const txtTipo = selTipo.options[selTipo.selectedIndex].text; const txtCat = selCat.options[selCat.selectedIndex].text;
 
-    btnPdf.style.display = 'none';
-    areaFiltros.style.display = 'none';
-    tituloOriginal.style.display = 'none'; 
+    btnPdf.style.display = 'none'; areaFiltros.style.display = 'none'; tituloOriginal.style.display = 'none'; 
     colunasAcoes.forEach(celula => celula.style.display = 'none');
-    
-    window.scrollTo(0, 0); 
-    elemento.style.overflow = 'visible'; 
+    window.scrollTo(0, 0); elemento.style.overflow = 'visible'; 
 
     const infoPDF = document.createElement('div');
     infoPDF.id = 'info-impressao'; 
     const agora = new Date();
     
-    // As cores aqui foram forçadas no estilo (color: #2d3436) para garantir que saiam escuras no papel branco
     infoPDF.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #dfe6e9; font-family: sans-serif; color: #2d3436;">
             <div>
                 <h2 style="margin: 0 0 10px 0; color: #2d3436; font-size: 22px;">Relatório Financeiro</h2>
-                <div style="color: #636e72; font-size: 14px;">
-                    <strong>Filtro:</strong> ${txtTipo} | ${txtCat}<br>
-                    <strong>Período:</strong> ${textoPeriodo}
-                </div>
+                <div style="color: #636e72; font-size: 14px;"><strong>Filtro:</strong> ${txtTipo} | ${txtCat}<br><strong>Período:</strong> ${textoPeriodo}</div>
             </div>
             <div style="text-align: right; color: #636e72; font-size: 13px;">
                 <span style="display: block; margin-bottom: 4px;">Gerado em:</span>
@@ -432,23 +409,15 @@ function gerarPDF() {
     document.querySelector('table').insertAdjacentElement('beforebegin', infoPDF);
 
     html2pdf().set({
-        margin: 10, 
-        filename: nomeArquivo, 
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, scrollY: 0 }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        margin: 10, filename: nomeArquivo, image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }).from(elemento).save().then(() => {
-        btnPdf.style.display = ''; areaFiltros.style.display = ''; 
-        tituloOriginal.style.display = ''; colunasAcoes.forEach(celula => celula.style.display = '');
-        document.getElementById('info-impressao').remove();
-        elemento.style.overflow = 'auto'; 
-
-        // DEVOLVE O MODO ESCURO APÓS GERAR O ARQUIVO
-        if (estavaEscuro) {
-            body.classList.add('dark-theme');
-        }
+        btnPdf.style.display = ''; areaFiltros.style.display = ''; tituloOriginal.style.display = ''; colunasAcoes.forEach(celula => celula.style.display = '');
+        document.getElementById('info-impressao').remove(); elemento.style.overflow = 'auto'; 
+        if (estavaEscuro) { body.classList.add('dark-theme'); }
     });
 }
+
 // --- 9. INICIA O SISTEMA ---
 atualizarListasDeCategorias();
 atualizarTela();
