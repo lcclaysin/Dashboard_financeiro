@@ -191,6 +191,30 @@ table th:last-child, table td:last-child { width: 60px; text-align: center; }
 .btn-del-cat { background: transparent; border: none; color: #ff7675; cursor: pointer; padding: 5px; font-size: 14px; transition: 0.2s;}
 .btn-del-cat:hover { transform: scale(1.2); }
 
+/* Estilo para o botão de cor nativo no modal (Modo Claro e Escuro) */
+.cor-picker-btn {
+    width: 32px !important;
+    height: 32px !important;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0;
+    background: transparent;
+    appearance: none;
+    -webkit-appearance: none; /* Força o visual customizado no Safari/móveis */
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Pseudoelementos para forçar o visual em móveis */
+.cor-picker-btn::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+.cor-picker-btn::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+}
+
 /* BARRA DE PROGRESSO COM GRADIENTE ANIMADO */
 .container-barra { width: 100%; height: 12px; background-color: #f1f2f6; border-radius: 10px; margin-top: 12px; overflow: hidden; }
 .progresso-fill { height: 100%; width: 0%; background: var(--gradiente-meta); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -208,18 +232,47 @@ table th:last-child, table td:last-child { width: 60px; text-align: center; }
     .filtro-area { flex-direction: column; align-items: stretch; gap: 10px; }
     .filtro-area select, .filtro-area input[type="date"] { width: 100%; height: 48px; font-size: 15px; }
     .card, .form-container, .grafico-box, .tabela-container { padding: 20px; border-radius: 15px;}
-    
-    /* Transforma o botão em flutuante APENAS no celular */
-    .btn-theme {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 55px;
-        height: 55px;
+
+        /* --- TABELA RESPONSIVA (Cartões Empilhados) --- */
+    /* Esconde o cabeçalho original da tabela no celular */
+    .tabela-container table thead { display: none; }
+
+    /* Faz cada linha (tr) se comportar como um bloco separado (cartão) */
+    .tabela-container table tr {
+        display: block;
         background-color: var(--card-bg);
-        border: 2px solid var(--cor-primaria);
-        font-size: 24px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        z-index: 9999;
+        border: 1px solid #edf2f7;
+        border-radius: 15px;
+        margin-bottom: 15px;
+        padding: 15px;
+        box-shadow: var(--sombra-suave);
+    }
+
+    /* Remove a borda padrão de baixo das células e faz o conteúdo se alinhar */
+    .tabela-container table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: none;
+        padding: 8px 0;
+        font-size: 14px;
+        text-align: right;
+        border-bottom: 1px solid #edf2f7; /* Adiciona uma linha divisória interna */
+    }
+    .tabela-container table td:last-child {
+        border-bottom: none; /* Remove a linha da última célula (Ações) */
+        justify-content: center; /* Centraliza a lixeira */
+        padding-top: 15px;
+    }
+
+    /* Usa data-label do HTML para criar um "rótulo" antes do conteúdo */
+    .tabela-container table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #b2bec3;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        text-align: left;
     }
 }
