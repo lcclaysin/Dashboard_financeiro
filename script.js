@@ -1,424 +1,281 @@
-// --- 1. BANCOS DE DADOS ---
-let transacoes = JSON.parse(localStorage.getItem('bancoDashboard')) || [];
-let categorias = JSON.parse(localStorage.getItem('categoriasDashboard')) || [];
-let coresCategorias = JSON.parse(localStorage.getItem('coresDashboardCores')) || { 'Geral': '#b2bec3' };
+/* --- IMPORTANDO FONTE MODERNA DO GOOGLE FONTS --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
-if (!categorias.includes('Geral')) {
-    categorias.unshift('Geral');
-    localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
+:root {
+    --fundo: #f8f9fa; 
+    --texto: #2d3436; 
+    --card-bg: #ffffff;
+    --cor-primaria: #00b894; 
+    --cor-alerta: #ff7675;
+    --gradiente-btn: linear-gradient(135deg, #0984e3, #74b9ff);
+    --gradiente-meta: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    --sombra-suave: 0 10px 30px rgba(0, 0, 0, 0.04);
 }
 
-// --- 0. GESTÃO DO TEMA CLARO/ESCURO ---
-const temaSalvo = localStorage.getItem('temaDashboard');
-if (temaSalvo === 'dark' || (!temaSalvo && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    document.body.classList.add('dark-theme');
+body { 
+    font-family: 'Poppins', sans-serif; /* Fonte Nova */
+    background-color: var(--fundo); 
+    color: var(--texto); 
+    margin: 0; 
+    padding: 20px; 
 }
 
-function toggleTheme() {
-    const body = document.body;
-    const btnIcon = document.querySelector('#theme-toggle i');
-    body.classList.toggle('dark-theme');
+/* --- CABEÇALHO E BOTÃO DE TEMA --- */
+.top-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 5px; 
+}
+
+/* Botão de Tema - Alinhado com o título e rola junto com a página */
+.btn-theme { 
+    width: 45px; 
+    height: 45px; 
+    border-radius: 50%; 
+    background-color: var(--card-bg); 
+    border: 2px solid var(--cor-primaria); 
+    font-size: 20px; 
+    color: var(--texto); 
+    cursor: pointer; 
+    transition: 0.3s; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.btn-theme:hover { 
+    color: var(--cor-primaria); 
+    transform: scale(1.1) rotate(15deg); 
+}
+
+/* --- MODO ESCURO (DARK THEME) --- */
+body.dark-theme {
+    --fundo: #121212; 
+    --texto: #f1f2f6; 
+    --card-bg: #1e272e;
+    --sombra-suave: 0 15px 35px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-theme h1, 
+body.dark-theme h3, 
+body.dark-theme th { color: #f1f2f6; }
+
+/* Consertando a força do CSS para o fundo dos inputs no Modo Escuro */
+body.dark-theme #form-transacao input, 
+body.dark-theme #form-transacao select,
+body.dark-theme .filtro-area select, 
+body.dark-theme .filtro-area input {
+    background-color: #2f3640;
+    color: #f1f2f6;
+    border-color: #353b48;
+}
+
+/* Deixando o Placeholder (Texto fantasma) com uma cor visível no escuro */
+body.dark-theme #form-transacao input::placeholder,
+body.dark-theme .filtro-area input::placeholder {
+    color: #a4b0be; /* Cinza claro elegante */
+    opacity: 1; 
+}
+
+body.dark-theme .modal-box {
+    background-color: var(--card-bg);
+    color: var(--texto);
+}
+
+body.dark-theme table th, 
+body.dark-theme table td, 
+body.dark-theme .item-categoria {
+    border-bottom: 1px solid #2f3640;
+}
+
+.dashboard-container { 
+    max-width: 1200px; 
+    margin: 0 auto; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 25px; 
+}
+
+h1 { 
+    color: #2d3436; 
+    margin-bottom: 5px; 
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+/* CARTÕES FLUTUANTES */
+.card, .form-container, .grafico-box, .tabela-container { 
+    background-color: var(--card-bg); 
+    padding: 25px; 
+    border-radius: 20px; /* Bordas mais redondas */
+    box-shadow: var(--sombra-suave); /* Sombra elegante */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Animação suave */
+}
+
+/* Micro-interação: Os cartões sobem ao passar o mouse */
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+}
+
+.resumo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.card h3 { margin: 0 0 10px 0; font-size: 13px; color: #b2bec3; text-transform: uppercase; letter-spacing: 1px; }
+.card .valor { font-size: 28px; font-weight: 700; }
+.receita { color: var(--cor-primaria); } 
+.despesa { color: var(--cor-alerta); }
+
+.meio-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+
+/* INPUTS MAIS CLEAN (Agora restrito apenas ao formulário principal) */
+#form-transacao input, #form-transacao select, #form-transacao button { 
+    width: 100%; padding: 12px 15px; margin-bottom: 12px; 
+    border: 1px solid #edf2f7; border-radius: 10px; 
+    box-sizing: border-box; background-color: #f8f9fa;
+    font-family: 'Poppins', sans-serif; transition: 0.3s;
+}
+#form-transacao input:focus, #form-transacao select:focus {
+    border-color: #74b9ff; outline: none; background-color: #fff; box-shadow: 0 0 0 3px rgba(116, 185, 255, 0.2);
+}
+
+/* BOTÃO DE ADICIONAR COM GRADIENTE */
+#form-transacao button { 
+    background: var(--gradiente-btn); color: white; border: none; font-weight: 600; 
+    cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(9, 132, 227, 0.3);
+}
+#form-transacao button:hover { 
+    transform: translateY(-2px); box-shadow: 0 6px 20px rgba(9, 132, 227, 0.4); 
+}
+
+/* Tira a sombra e o tamanho do botãozinho de + Categorias (Modo Escuro e Claro) */
+button[onclick="abrirModal()"] {
+    width: auto !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}.form-container button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(9, 132, 227, 0.4); }
+
+.graficos-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grafico-box { position: relative; height: 300px; display: flex; justify-content: center; align-items: center; }
+
+.tabela-container { overflow-x: auto; }
+.tabela-header { display: flex; flex-direction: column; align-items: flex-start; gap: 15px; margin-bottom: 20px; }
+.filtro-area { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #636e72; flex-wrap: wrap; width: 100%; }
+.filtro-area select, .filtro-area input[type="date"] { 
+    padding: 8px 15px; border-radius: 10px; border: 1px solid #edf2f7; 
+    background: #f8f9fa; cursor: pointer; color: var(--texto); font-family: inherit; box-sizing: border-box; height: 42px; font-weight: 500;
+}
+
+table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+th, td { padding: 15px 12px; border-bottom: 1px solid #f1f2f6; }
+th { background-color: transparent; color: #b2bec3; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;}
+.btn-excluir { background-color: transparent; color: #dfe6e9; border: none; padding: 8px; cursor: pointer; font-size: 16px; transition: 0.3s; }
+.btn-excluir:hover { color: var(--cor-alerta); transform: scale(1.2); }
+table th:last-child, table td:last-child { width: 60px; text-align: center; }
+
+.btn-pdf { background-color: #2d3436; color: white; border: none; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.3s; display: flex; align-items: center; gap: 8px; }
+.btn-pdf:hover { background-color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center; }
+.modal-box { background: white; width: 90%; max-width: 420px; padding: 25px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); }
+.btn-fechar { background: none; border: none; font-size: 28px; color: #b2bec3; cursor: pointer; transition: 0.2s;}
+.btn-fechar:hover { color: var(--cor-alerta); }
+.item-categoria { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid #f1f2f6; }
+
+.drag-handle { cursor: grab; color: #dfe6e9; padding: 5px 10px; font-size: 16px; transition: 0.2s; }
+.drag-handle:hover { color: #0984e3; }
+.drag-handle:active { cursor: grabbing; }
+.sortable-ghost { opacity: 0.3; background-color: #f8f9fa; border-radius: 10px;}
+.btn-del-cat { background: transparent; border: none; color: #ff7675; cursor: pointer; padding: 5px; font-size: 14px; transition: 0.2s;}
+.btn-del-cat:hover { transform: scale(1.2); }
+
+/* Estilo para o botão de cor nativo no modal (Modo Claro e Escuro) */
+.cor-picker-btn {
+    width: 32px !important;
+    height: 32px !important;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0;
+    background: transparent;
+    appearance: none;
+    -webkit-appearance: none; /* Força o visual customizado no Safari/móveis */
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Pseudoelementos para forçar o visual em móveis */
+.cor-picker-btn::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+.cor-picker-btn::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+}
+
+/* BARRA DE PROGRESSO COM GRADIENTE ANIMADO */
+.container-barra { width: 100%; height: 12px; background-color: #f1f2f6; border-radius: 10px; margin-top: 12px; overflow: hidden; }
+.progresso-fill { height: 100%; width: 0%; background: var(--gradiente-meta); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+.btn-meta-edit { background: transparent; border: none; color: #a29bfe; cursor: pointer; font-size: 14px; transition: 0.2s;}
+.btn-meta-edit:hover { color: #6c5ce7; transform: scale(1.1); }
+
+@media (max-width: 900px) { .meio-grid, .graficos-wrapper { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+    /* Adiciona um espaço no final da tela para o botão não tampar a última linha */
+    body { padding: 10px; padding-bottom: 90px; } 
     
-    if (body.classList.contains('dark-theme')) {
-        btnIcon.classList.replace('fa-moon', 'fa-sun');
-        localStorage.setItem('temaDashboard', 'dark');
-    } else {
-        btnIcon.classList.replace('fa-sun', 'fa-moon');
-        localStorage.setItem('temaDashboard', 'light');
+    h1 { font-size: 22px; text-align: center; margin-right: 40px; }
+    .resumo-grid { grid-template-columns: 1fr; }
+    .btn-pdf { width: 100%; justify-content: center; }
+    .filtro-area { flex-direction: column; align-items: stretch; gap: 10px; }
+    .filtro-area select, .filtro-area input[type="date"] { width: 100%; height: 48px; font-size: 15px; }
+    .card, .form-container, .grafico-box, .tabela-container { padding: 20px; border-radius: 15px;}
+
+        /* --- TABELA RESPONSIVA (Cartões Empilhados) --- */
+    /* Esconde o cabeçalho original da tabela no celular */
+    .tabela-container table thead { display: none; }
+
+    /* Faz cada linha (tr) se comportar como um bloco separado (cartão) */
+    .tabela-container table tr {
+        display: block;
+        background-color: var(--card-bg);
+        border: 1px solid #edf2f7;
+        border-radius: 15px;
+        margin-bottom: 15px;
+        padding: 15px;
+        box-shadow: var(--sombra-suave);
+    }
+
+    /* Remove a borda padrão de baixo das células e faz o conteúdo se alinhar */
+    .tabela-container table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: none;
+        padding: 8px 0;
+        font-size: 14px;
+        text-align: right;
+        border-bottom: 1px solid #edf2f7; /* Adiciona uma linha divisória interna */
+    }
+    .tabela-container table td:last-child {
+        border-bottom: none; /* Remove a linha da última célula (Ações) */
+        justify-content: center; /* Centraliza a lixeira */
+        padding-top: 15px;
+    }
+
+    /* Usa data-label do HTML para criar um "rótulo" antes do conteúdo */
+    .tabela-container table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #b2bec3;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        text-align: left;
+    }
+    /* Dá mais espaço interno no modal para telas pequenas */
+    .modal-box { padding: 20px 15px; width: 95%; 
     }
 }
-
-window.addEventListener('DOMContentLoaded', () => {
-    const btnIcon = document.querySelector('#theme-toggle i');
-    if (document.body.classList.contains('dark-theme')) {
-        btnIcon.classList.replace('fa-moon', 'fa-sun');
-    }
-});
-
-let metaNome = localStorage.getItem('metaNome') || 'Meta do Período';
-let metaFinanceira = parseFloat(localStorage.getItem('metaFinanceira')) || 0;
-let meuGrafico = null;
-let meuGraficoBarras = null;
-
-// --- 2. CAPTURANDO ELEMENTOS ---
-const form = document.getElementById('form-transacao');
-const corpoTabela = document.getElementById('corpo-tabela');
-const displayReceita = document.getElementById('total-receita');
-const displayDespesa = document.getElementById('total-despesa');
-const displayLucro = document.getElementById('lucro-liquido');
-
-const filtroTipo = document.getElementById('filtro-tipo');
-const filtroCategoria = document.getElementById('filtro-categoria');
-const filtroDataInicio = document.getElementById('filtro-data-inicio');
-const filtroDataFim = document.getElementById('filtro-data-fim');
-
-// --- 3. INICIALIZAÇÃO E DATAS ---
-function getDataHoje() {
-    const data = new Date();
-    const ano = data.getFullYear();
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    const dia = String(data.getDate()).padStart(2, '0');
-    return `${ano}-${mes}-${dia}`;
-}
-
-document.getElementById('data').value = getDataHoje();
-
-filtroTipo.addEventListener('change', atualizarTela);
-filtroCategoria.addEventListener('change', atualizarTela);
-filtroDataInicio.addEventListener('change', atualizarTela);
-filtroDataFim.addEventListener('change', atualizarTela);
-
-// --- FUNÇÃO MATEMÁTICA: CONTRASTE AUTOMÁTICO (YIQ) ---
-function getCorTextoIdeal(hexColor) {
-    if (!hexColor) return '#ffffff';
-    hexColor = hexColor.replace('#', '');
-    
-    // Converte HEX para RGB
-    const r = parseInt(hexColor.substr(0, 2), 16);
-    const g = parseInt(hexColor.substr(2, 2), 16);
-    const b = parseInt(hexColor.substr(4, 2), 16);
-    
-    // Calcula a luminosidade (Fórmula YIQ de percepção humana)
-    const luminosidade = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-    
-    // Retorna Preto Chumbo se o fundo for claro, e Branco se o fundo for escuro
-    return (luminosidade > 128) ? '#2d3436' : '#ffffff';
-}
-
-// --- FUNÇÃO VISUAL: COLORE A CAIXA DE SELEÇÃO ---
-function atualizarCorDaCaixaDeSelecao() {
-    const select = document.getElementById('categoria');
-    const cor = coresCategorias[select.value] || '#b2bec3';
-    // Coloca uma borda grossa na esquerda com a cor da categoria
-    select.style.borderLeft = `6px solid ${cor}`;
-}
-document.getElementById('categoria').addEventListener('change', atualizarCorDaCaixaDeSelecao);
-
-// --- 4. GESTÃO DE METAS ---
-function definirMeta() {
-    const novoNome = prompt("Como se chama esta meta? (ex: Meta de Abril)", metaNome);
-    if (novoNome === null) return; 
-    
-    const novoValor = prompt(`Qual o valor para "${novoNome}"?`, metaFinanceira);
-    if (novoValor !== null && !isNaN(novoValor)) {
-        metaNome = novoNome;
-        metaFinanceira = parseFloat(novoValor);
-        localStorage.setItem('metaNome', metaNome);
-        localStorage.setItem('metaFinanceira', metaFinanceira);
-        atualizarTela(); 
-    }
-}
-
-function atualizarProgressoMeta(faturamentoTotal) {
-    document.getElementById('nome-meta-display').innerText = metaNome;
-    document.getElementById('display-meta').innerText = `R$ ${metaFinanceira.toFixed(2)}`;
-
-    const barra = document.getElementById('barra-progresso');
-    const texto = document.getElementById('texto-progresso');
-
-    if (metaFinanceira > 0) {
-        let porcentagem = (faturamentoTotal / metaFinanceira) * 100;
-        if (porcentagem > 100) porcentagem = 100;
-
-        barra.style.width = `${porcentagem}%`;
-        barra.style.background = porcentagem >= 100 ? 'linear-gradient(135deg, #00b894, #55efc4)' : 'var(--gradiente-meta)';
-        texto.innerText = `${porcentagem.toFixed(1)}% atingido`;
-    } else {
-        barra.style.width = '0%';
-        texto.innerText = 'Defina uma meta';
-    }
-}
-
-// --- 5. GESTÃO DE CATEGORIAS ---
-let sortableInstance = null;
-
-function atualizarListasDeCategorias() {
-    const selectForm = document.getElementById('categoria');
-    const selectFiltro = document.getElementById('filtro-categoria');
-    const listaModal = document.getElementById('lista-categorias');
-
-    const categoriaSelecionadaAntes = selectForm.value || 'Geral';
-
-    selectForm.innerHTML = '';
-    selectFiltro.innerHTML = '<option value="todas">Todas as Categorias</option>';
-    listaModal.innerHTML = '';
-
-    categorias.forEach((cat) => {
-        let corDaCategoria = coresCategorias[cat] || '#b2bec3';
-        
-        // Pinta o texto da opção no menu
-        selectForm.innerHTML += `<option value="${cat}" style="color: ${corDaCategoria}; font-weight: 600;">${cat}</option>`;
-        selectFiltro.innerHTML += `<option value="${cat}">${cat}</option>`;
-        
-        let htmlBolinhaColorida = `<span style="width: 12px; height: 12px; border-radius: 50%; background-color: ${corDaCategoria}; display: inline-block;"></span>`;
-
-        if (cat !== 'Geral') {
-            listaModal.innerHTML += `
-                <li class="item-categoria drag-item" data-nome="${cat}">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <i class="fa-solid fa-grip-lines drag-handle" title="Arraste para reordenar"></i>
-                        ${htmlBolinhaColorida}
-                        <span style="font-weight: 500;">${cat}</span>
-                    </div>
-                    <button class="btn-del-cat" onclick="removerCategoria('${cat}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-                </li>
-            `;
-        } else {
-            listaModal.innerHTML += `
-                <li class="item-categoria fixed-item" data-nome="${cat}">
-                    <div style="display: flex; align-items: center; gap: 10px; padding-left: 26px;">
-                        ${htmlBolinhaColorida}
-                        <span style="font-weight: 500;">${cat}</span>
-                    </div>
-                    <span style="color: #b2bec3; font-size: 12px; margin-right: 10px;">(Padrão Fixo)</span>
-                </li>
-            `;
-        }
-    });
-
-    if (categorias.includes(categoriaSelecionadaAntes)) {
-        selectForm.value = categoriaSelecionadaAntes;
-    }
-    
-    atualizarCorDaCaixaDeSelecao(); // Chama a função para já pintar a caixa atual
-
-    if (sortableInstance) sortableInstance.destroy(); 
-    sortableInstance = new Sortable(listaModal, {
-        animation: 150, handle: '.drag-handle', filter: '.fixed-item',
-        onEnd: function () {
-            const novaOrdem = [];
-            document.querySelectorAll('#lista-categorias .item-categoria').forEach(li => {
-                novaOrdem.push(li.getAttribute('data-nome'));
-            });
-            categorias = novaOrdem;
-            localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
-            atualizarListasDeCategorias(); 
-        }
-    });
-}
-
-function abrirModal() { document.getElementById('modal-categorias').style.display = 'flex'; }
-function fecharModal() { document.getElementById('modal-categorias').style.display = 'none'; }
-
-function adicionarCategoria() {
-    const input = document.getElementById('nova-categoria');
-    const inputCor = document.getElementById('cor-categoria');
-    
-    let nome = input.value.trim();
-    let corEscolhida = inputCor.value; 
-
-    if (nome) nome = nome.charAt(0).toUpperCase() + nome.slice(1); 
-
-    if (nome !== '' && !categorias.includes(nome)) {
-        categorias.push(nome);
-        coresCategorias[nome] = corEscolhida; 
-        
-        localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
-        localStorage.setItem('coresDashboardCores', JSON.stringify(coresCategorias)); 
-        
-        input.value = '';
-        atualizarListasDeCategorias();
-        atualizarTela(); 
-    }
-    input.focus();
-}
-
-function removerCategoria(nomeCategoria) {
-    if (nomeCategoria === 'Geral') return; 
-    categorias = categorias.filter(cat => cat !== nomeCategoria);
-    
-    delete coresCategorias[nomeCategoria];
-
-    localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
-    localStorage.setItem('coresDashboardCores', JSON.stringify(coresCategorias));
-    atualizarListasDeCategorias();
-    atualizarTela();
-}
-
-// --- 6. LÓGICA DE TRANSAÇÕES ---
-form.addEventListener('submit', function(evento) {
-    evento.preventDefault(); 
-
-    const descricao = document.getElementById('descricao').value;
-    const valor = parseFloat(document.getElementById('valor').value);
-    const tipo = document.getElementById('tipo').value;
-    const data = document.getElementById('data').value || getDataHoje();
-    const categoriaSelecionada = document.getElementById('categoria').value; 
-
-    transacoes.push({ descricao, valor, tipo, data, categoria: categoriaSelecionada });
-    localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
-
-    atualizarTela();
-    form.reset();
-    document.getElementById('data').value = getDataHoje();
-    document.getElementById('categoria').value = categoriaSelecionada; 
-    atualizarCorDaCaixaDeSelecao(); // Garante que a borda continue certa após enviar
-});
-
-function removerTransacao(index) {
-    transacoes.splice(index, 1);
-    localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
-    atualizarTela();
-}
-
-function atualizarTela() {
-    corpoTabela.innerHTML = '';
-    let totalReceitas = 0; let totalDespesas = 0;
-    let transacoesFiltradas = [];
-
-    transacoes.forEach((transacao, index) => {
-        let passaTipo = (filtroTipo.value === 'todos' || transacao.tipo === filtroTipo.value);
-        let passaCategoria = (filtroCategoria.value === 'todas' || transacao.categoria === filtroCategoria.value);
-        let passaData = true;
-
-        if (filtroDataInicio.value && transacao.data < filtroDataInicio.value) passaData = false;
-        if (filtroDataFim.value && transacao.data > filtroDataFim.value) passaData = false;
-
-        if (passaTipo && passaData && passaCategoria) {
-            transacoesFiltradas.push(transacao);
-
-            if(transacao.tipo === 'receita') totalReceitas += transacao.valor;
-            else totalDespesas += transacao.valor;
-
-            let dataFormatada = transacao.data ? transacao.data.split('-').reverse().join('/') : 'Sem Data';
-            let catVisual = transacao.categoria ? transacao.categoria : 'Geral'; 
-            
-            let corDaTag = coresCategorias[catVisual] || '#b2bec3';
-            let corDoTextoIdeal = getCorTextoIdeal(corDaTag); // Chama o cérebro matemático da cor
-
-            const tr = document.createElement('tr');
-           // Substitua o tr.innerHTML existente no seu script.js por este aqui:
-            tr.innerHTML = `
-                <td data-label="Data">${dataFormatada}</td>
-                <td data-label="Descrição" style="font-weight: 500;">${transacao.descricao}</td>
-                <td data-label="Categoria">
-                    <span style="background: ${corDaTag}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corDoTextoIdeal}; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: 0.5px;">
-                        ${catVisual}
-                    </span>
-                </td>
-                <td data-label="Tipo" style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600; font-size: 12px;">${transacao.tipo.toUpperCase()}</td>
-                <td data-label="Valor" style="font-weight: 700;">R$ ${transacao.valor.toFixed(2)}</td>
-                <td data-label="Ações" style="text-align: center;">
-                    <button class="btn-excluir" onclick="removerTransacao(${index})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-                </td>
-            `;
-            corpoTabela.appendChild(tr);
-        }
-    });
-
-    displayReceita.innerText = `R$ ${totalReceitas.toFixed(2)}`;
-    displayDespesa.innerText = `R$ ${totalDespesas.toFixed(2)}`;
-    const lucro = totalReceitas - totalDespesas;
-    displayLucro.innerText = `R$ ${lucro.toFixed(2)}`;
-    displayLucro.style.color = lucro >= 0 ? 'var(--texto)' : 'var(--cor-alerta)';
-
-    atualizarProgressoMeta(totalReceitas);
-    atualizarGrafico(totalReceitas, totalDespesas);
-    atualizarGraficoBarras(transacoesFiltradas);
-}
-
-// --- 7. GRÁFICOS ---
-function atualizarGrafico(receitas, despesas) {
-    const ctx = document.getElementById('meuGrafico').getContext('2d');
-    if (meuGrafico) { meuGrafico.destroy(); }
-    meuGrafico = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels: ['Receitas', 'Despesas'], datasets: [{ data: [receitas, despesas], backgroundColor: ['#00b894', '#ff7675'], borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Proporção do Filtro Atual' } }, cutout: '70%' }
-    });
-}
-
-function atualizarGraficoBarras(listaFiltrada) {
-    const ctx = document.getElementById('graficoBarras').getContext('2d');
-    if (meuGraficoBarras) { meuGraficoBarras.destroy(); }
-
-    const resumoCategorias = {};
-    listaFiltrada.forEach(t => {
-        const cat = t.categoria || 'Geral';
-        if (!resumoCategorias[cat]) { resumoCategorias[cat] = { receita: 0, despesa: 0 }; }
-        if (t.tipo === 'receita') { resumoCategorias[cat].receita += t.valor; } 
-        else { resumoCategorias[cat].despesa += t.valor; }
-    });
-
-    const labels = Object.keys(resumoCategorias);
-    const dadosReceitas = labels.map(cat => resumoCategorias[cat].receita);
-    const dadosDespesas = labels.map(cat => resumoCategorias[cat].despesa);
-
-    meuGraficoBarras = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'Receitas', data: dadosReceitas, backgroundColor: '#00b894', borderRadius: 6 },
-                { label: 'Despesas', data: dadosDespesas, backgroundColor: '#ff7675', borderRadius: 6 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Desempenho por Categoria' } }, scales: { y: { beginAtZero: true } } }
-    });
-}
-
-// --- 8. EXPORTAR PDF ---
-function gerarPDF() {
-    const dataHoje = new Date();
-    const dia = String(dataHoje.getDate()).padStart(2, '0');
-    const mes = String(dataHoje.getMonth() + 1).padStart(2, '0');
-    const ano = dataHoje.getFullYear();
-    const nomePadrao = `Relatorio_Financeiro_${dia}-${mes}-${ano}`;
-
-    let nomeArquivo = prompt("Escolha o nome do arquivo para salvar:", nomePadrao);
-    if (nomeArquivo === null) return; 
-    if (!nomeArquivo.endsWith('.pdf')) nomeArquivo += '.pdf';
-
-    const elemento = document.querySelector(".tabela-container");
-    const btnPdf = document.querySelector('.btn-pdf');
-    const areaFiltros = document.querySelector('.filtro-area');
-    const colunasAcoes = document.querySelectorAll('th:last-child, td:last-child');
-    const tituloOriginal = document.querySelector('.tabela-header h3');
-
-    const body = document.body;
-    const estavaEscuro = body.classList.contains('dark-theme');
-    if (estavaEscuro) { body.classList.remove('dark-theme'); }
-
-    const dtInicioRaw = document.getElementById('filtro-data-inicio').value;
-    const dtFimRaw = document.getElementById('filtro-data-fim').value;
-    let textoPeriodo = (!dtInicioRaw && !dtFimRaw) ? "Todo o período" : `${dtInicioRaw ? dtInicioRaw.split('-').reverse().join('/') : '-'} até ${dtFimRaw ? dtFimRaw.split('-').reverse().join('/') : 'Hoje'}`;
-    const selTipo = document.getElementById('filtro-tipo'); const selCat = document.getElementById('filtro-categoria');
-    const txtTipo = selTipo.options[selTipo.selectedIndex].text; const txtCat = selCat.options[selCat.selectedIndex].text;
-
-    btnPdf.style.display = 'none'; areaFiltros.style.display = 'none'; tituloOriginal.style.display = 'none'; 
-    colunasAcoes.forEach(celula => celula.style.display = 'none');
-    window.scrollTo(0, 0); elemento.style.overflow = 'visible'; 
-
-    const infoPDF = document.createElement('div');
-    infoPDF.id = 'info-impressao'; 
-    const agora = new Date();
-    
-    infoPDF.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #dfe6e9; font-family: sans-serif; color: #2d3436;">
-            <div>
-                <h2 style="margin: 0 0 10px 0; color: #2d3436; font-size: 22px;">Relatório Financeiro</h2>
-                <div style="color: #636e72; font-size: 14px;"><strong>Filtro:</strong> ${txtTipo} | ${txtCat}<br><strong>Período:</strong> ${textoPeriodo}</div>
-            </div>
-            <div style="text-align: right; color: #636e72; font-size: 13px;">
-                <span style="display: block; margin-bottom: 4px;">Gerado em:</span>
-                <strong style="color: #2d3436; font-size: 15px;">${agora.toLocaleDateString('pt-BR')}</strong><br>
-                às ${agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' })}
-            </div>
-        </div>
-    `;
-    
-    document.querySelector('table').insertAdjacentElement('beforebegin', infoPDF);
-
-    html2pdf().set({
-        margin: 10, filename: nomeArquivo, image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(elemento).save().then(() => {
-        btnPdf.style.display = ''; areaFiltros.style.display = ''; tituloOriginal.style.display = ''; colunasAcoes.forEach(celula => celula.style.display = '');
-        document.getElementById('info-impressao').remove(); elemento.style.overflow = 'auto'; 
-        if (estavaEscuro) { body.classList.add('dark-theme'); }
-    });
-}
-
-// --- 9. INICIA O SISTEMA ---
-atualizarListasDeCategorias();
-atualizarTela();
