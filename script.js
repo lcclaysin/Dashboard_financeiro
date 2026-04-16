@@ -287,17 +287,18 @@ function atualizarTela() {
             let corDoTextoIdeal = getCorTextoIdeal(corDaTag); // Chama o cérebro matemático da cor
 
             const tr = document.createElement('tr');
+           // Substitua o tr.innerHTML existente no seu script.js por este aqui:
             tr.innerHTML = `
-                <td>${dataFormatada}</td>
-                <td style="font-weight: 500;">${transacao.descricao}</td>
-                <td>
+                <td data-label="Data">${dataFormatada}</td>
+                <td data-label="Descrição" style="font-weight: 500;">${transacao.descricao}</td>
+                <td data-label="Categoria">
                     <span style="background: ${corDaTag}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corDoTextoIdeal}; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: 0.5px;">
                         ${catVisual}
                     </span>
                 </td>
-                <td style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600; font-size: 12px;">${transacao.tipo.toUpperCase()}</td>
-                <td style="font-weight: 700;">R$ ${transacao.valor.toFixed(2)}</td>
-                <td style="text-align: center;">
+                <td data-label="Tipo" style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600; font-size: 12px;">${transacao.tipo.toUpperCase()}</td>
+                <td data-label="Valor" style="font-weight: 700;">R$ ${transacao.valor.toFixed(2)}</td>
+                <td data-label="Ações" style="text-align: center;">
                     <button class="btn-excluir" onclick="removerTransacao(${index})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
             `;
