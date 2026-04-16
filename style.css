@@ -1,0 +1,207 @@
+/* --- IMPORTANDO FONTE MODERNA DO GOOGLE FONTS --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+:root {
+    --fundo: #f8f9fa; 
+    --texto: #2d3436; 
+    --card-bg: #ffffff;
+    --cor-primaria: #00b894; 
+    --cor-alerta: #ff7675;
+    --gradiente-btn: linear-gradient(135deg, #0984e3, #74b9ff);
+    --gradiente-meta: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    --sombra-suave: 0 10px 30px rgba(0, 0, 0, 0.04);
+}
+
+body { 
+    font-family: 'Poppins', sans-serif; /* Fonte Nova */
+    background-color: var(--fundo); 
+    color: var(--texto); 
+    margin: 0; 
+    padding: 20px; 
+}
+
+/* --- CABEÇALHO E BOTÃO DE TEMA --- */
+.top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+/* Botão Flutuante do Tema (Fixo no canto inferior direito) */
+.btn-theme { 
+    position: fixed; 
+    bottom: 30px; 
+    right: 30px; 
+    width: 55px; 
+    height: 55px; 
+    border-radius: 50%; 
+    background-color: var(--card-bg); 
+    border: 2px solid var(--cor-primaria); /* Uma bordinha verde para dar destaque */
+    font-size: 24px; 
+    color: var(--texto); 
+    cursor: pointer; 
+    transition: 0.3s; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2); /* Sombra de botão flutuante */
+    z-index: 9999; /* Garante que fique por cima de tudo */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn-theme:hover { 
+    color: var(--cor-primaria); 
+    transform: scale(1.1) rotate(15deg); 
+    box-shadow: 0 15px 35px rgba(0, 184, 148, 0.4); /* Sombra verde ao passar o mouse */
+}
+
+/* --- MODO ESCURO (DARK THEME) --- */
+body.dark-theme {
+    --fundo: #121212; 
+    --texto: #f1f2f6; 
+    --card-bg: #1e272e;
+    --sombra-suave: 0 15px 35px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-theme h1, 
+body.dark-theme h3, 
+body.dark-theme th { color: #f1f2f6; }
+
+/* Consertando a força do CSS para o fundo dos inputs no Modo Escuro */
+body.dark-theme #form-transacao input, 
+body.dark-theme #form-transacao select,
+body.dark-theme .filtro-area select, 
+body.dark-theme .filtro-area input {
+    background-color: #2f3640;
+    color: #f1f2f6;
+    border-color: #353b48;
+}
+
+/* Deixando o Placeholder (Texto fantasma) com uma cor visível no escuro */
+body.dark-theme #form-transacao input::placeholder,
+body.dark-theme .filtro-area input::placeholder {
+    color: #a4b0be; /* Cinza claro elegante */
+    opacity: 1; 
+}
+
+body.dark-theme .modal-box {
+    background-color: var(--card-bg);
+    color: var(--texto);
+}
+
+body.dark-theme table th, 
+body.dark-theme table td, 
+body.dark-theme .item-categoria {
+    border-bottom: 1px solid #2f3640;
+}
+
+.dashboard-container { 
+    max-width: 1200px; 
+    margin: 0 auto; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 25px; 
+}
+
+h1 { 
+    color: #2d3436; 
+    margin-bottom: 5px; 
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+/* CARTÕES FLUTUANTES */
+.card, .form-container, .grafico-box, .tabela-container { 
+    background-color: var(--card-bg); 
+    padding: 25px; 
+    border-radius: 20px; /* Bordas mais redondas */
+    box-shadow: var(--sombra-suave); /* Sombra elegante */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Animação suave */
+}
+
+/* Micro-interação: Os cartões sobem ao passar o mouse */
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+}
+
+.resumo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.card h3 { margin: 0 0 10px 0; font-size: 13px; color: #b2bec3; text-transform: uppercase; letter-spacing: 1px; }
+.card .valor { font-size: 28px; font-weight: 700; }
+.receita { color: var(--cor-primaria); } 
+.despesa { color: var(--cor-alerta); }
+
+.meio-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+
+/* INPUTS MAIS CLEAN (Agora restrito apenas ao formulário principal) */
+#form-transacao input, #form-transacao select, #form-transacao button { 
+    width: 100%; padding: 12px 15px; margin-bottom: 12px; 
+    border: 1px solid #edf2f7; border-radius: 10px; 
+    box-sizing: border-box; background-color: #f8f9fa;
+    font-family: 'Poppins', sans-serif; transition: 0.3s;
+}
+#form-transacao input:focus, #form-transacao select:focus {
+    border-color: #74b9ff; outline: none; background-color: #fff; box-shadow: 0 0 0 3px rgba(116, 185, 255, 0.2);
+}
+
+/* BOTÃO DE ADICIONAR COM GRADIENTE */
+#form-transacao button { 
+    background: var(--gradiente-btn); color: white; border: none; font-weight: 600; 
+    cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(9, 132, 227, 0.3);
+}
+#form-transacao button:hover { 
+    transform: translateY(-2px); box-shadow: 0 6px 20px rgba(9, 132, 227, 0.4); 
+}
+
+/* Tira a sombra e o tamanho do botãozinho de + Categorias (Modo Escuro e Claro) */
+button[onclick="abrirModal()"] {
+    width: auto !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}.form-container button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(9, 132, 227, 0.4); }
+
+.graficos-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grafico-box { position: relative; height: 300px; display: flex; justify-content: center; align-items: center; }
+
+.tabela-container { overflow-x: auto; }
+.tabela-header { display: flex; flex-direction: column; align-items: flex-start; gap: 15px; margin-bottom: 20px; }
+.filtro-area { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #636e72; flex-wrap: wrap; width: 100%; }
+.filtro-area select, .filtro-area input[type="date"] { 
+    padding: 8px 15px; border-radius: 10px; border: 1px solid #edf2f7; 
+    background: #f8f9fa; cursor: pointer; color: var(--texto); font-family: inherit; box-sizing: border-box; height: 42px; font-weight: 500;
+}
+
+table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+th, td { padding: 15px 12px; border-bottom: 1px solid #f1f2f6; }
+th { background-color: transparent; color: #b2bec3; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;}
+.btn-excluir { background-color: transparent; color: #dfe6e9; border: none; padding: 8px; cursor: pointer; font-size: 16px; transition: 0.3s; }
+.btn-excluir:hover { color: var(--cor-alerta); transform: scale(1.2); }
+table th:last-child, table td:last-child { width: 60px; text-align: center; }
+
+.btn-pdf { background-color: #2d3436; color: white; border: none; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.3s; display: flex; align-items: center; gap: 8px; }
+.btn-pdf:hover { background-color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center; }
+.modal-box { background: white; width: 90%; max-width: 420px; padding: 25px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); }
+.btn-fechar { background: none; border: none; font-size: 28px; color: #b2bec3; cursor: pointer; transition: 0.2s;}
+.btn-fechar:hover { color: var(--cor-alerta); }
+.item-categoria { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid #f1f2f6; }
+
+.drag-handle { cursor: grab; color: #dfe6e9; padding: 5px 10px; font-size: 16px; transition: 0.2s; }
+.drag-handle:hover { color: #0984e3; }
+.drag-handle:active { cursor: grabbing; }
+.sortable-ghost { opacity: 0.3; background-color: #f8f9fa; border-radius: 10px;}
+.btn-del-cat { background: transparent; border: none; color: #ff7675; cursor: pointer; padding: 5px; font-size: 14px; transition: 0.2s;}
+.btn-del-cat:hover { transform: scale(1.2); }
+
+/* BARRA DE PROGRESSO COM GRADIENTE ANIMADO */
+.container-barra { width: 100%; height: 12px; background-color: #f1f2f6; border-radius: 10px; margin-top: 12px; overflow: hidden; }
+.progresso-fill { height: 100%; width: 0%; background: var(--gradiente-meta); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+.btn-meta-edit { background: transparent; border: none; color: #a29bfe; cursor: pointer; font-size: 14px; transition: 0.2s;}
+.btn-meta-edit:hover { color: #6c5ce7; transform: scale(1.1); }
+
+@media (max-width: 900px) { .meio-grid, .graficos-wrapper { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+    body { padding: 10px; } h1 { font-size: 22px; text-align: center; }
+    .resumo-grid { grid-template-columns: 1fr; }
+    .btn-pdf { width: 100%; justify-content: center; }
+    .filtro-area { flex-direction: column; align-items: stretch; gap: 10px; }
+    .filtro-area select, .filtro-area input[type="date"] { width: 100%; height: 48px; font-size: 15px; }
+    .card, .form-container, .grafico-box, .tabela-container { padding: 20px; border-radius: 15px;}
+}
