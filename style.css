@@ -196,10 +196,27 @@ table th:last-child, table td:last-child { width: 60px; text-align: center; }
 
 @media (max-width: 900px) { .meio-grid, .graficos-wrapper { grid-template-columns: 1fr; } }
 @media (max-width: 600px) {
-    body { padding: 10px; } h1 { font-size: 22px; text-align: center; }
+    /* Adiciona um espaço no final da tela para o botão não tampar a última linha */
+    body { padding: 10px; padding-bottom: 90px; } 
+    
+    h1 { font-size: 22px; text-align: center; margin-right: 40px; }
     .resumo-grid { grid-template-columns: 1fr; }
     .btn-pdf { width: 100%; justify-content: center; }
     .filtro-area { flex-direction: column; align-items: stretch; gap: 10px; }
     .filtro-area select, .filtro-area input[type="date"] { width: 100%; height: 48px; font-size: 15px; }
     .card, .form-container, .grafico-box, .tabela-container { padding: 20px; border-radius: 15px;}
+    
+    /* Transforma o botão em flutuante APENAS no celular */
+    .btn-theme {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 55px;
+        height: 55px;
+        background-color: var(--card-bg);
+        border: 2px solid var(--cor-primaria);
+        font-size: 24px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        z-index: 9999;
+    }
 }
