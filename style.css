@@ -22,22 +22,19 @@ body {
 
 /* --- CABEÇALHO E BOTÃO DE TEMA --- */
 .top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-/* Botão Flutuante do Tema (Fixo no canto inferior direito) */
+
+/* Botão de Tema - Padrão Desktop (Discreto e solto no cabeçalho) */
 .btn-theme { 
-    position: fixed; 
-    bottom: 30px; 
-    right: 30px; 
-    width: 55px; 
-    height: 55px; 
+    position: static; 
+    width: 45px; 
+    height: 45px; 
     border-radius: 50%; 
-    background-color: var(--card-bg); 
-    border: 2px solid var(--cor-primaria); /* Uma bordinha verde para dar destaque */
-    font-size: 24px; 
+    background: transparent; 
+    border: 1px solid #dfe6e9; 
+    font-size: 18px; 
     color: var(--texto); 
     cursor: pointer; 
     transition: 0.3s; 
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2); /* Sombra de botão flutuante */
-    z-index: 9999; /* Garante que fique por cima de tudo */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -45,8 +42,9 @@ body {
 
 .btn-theme:hover { 
     color: var(--cor-primaria); 
-    transform: scale(1.1) rotate(15deg); 
-    box-shadow: 0 15px 35px rgba(0, 184, 148, 0.4); /* Sombra verde ao passar o mouse */
+    background-color: var(--card-bg);
+    border-color: var(--cor-primaria);
+    transform: rotate(15deg); 
 }
 
 /* --- MODO ESCURO (DARK THEME) --- */
