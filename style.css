@@ -299,4 +299,17 @@ table th:last-child, table td:last-child { width: 100px; text-align: center; }
     /* Dá mais espaço interno no modal para telas pequenas */
     .modal-box { padding: 20px 15px; width: 95%; 
     }
+    /* 1. Empilha o título e os botões de exportação no celular */
+    .tabela-header > div:first-child {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 15px;
+    }
+    /* Garante que a linha de Ações tenha o mesmo alinhamento das outras */
+    .tabela-container table td:last-child {
+        justify-content: space-between !important;
+        padding-top: 15px;
+        padding-bottom: 5px;
+    }
+
 }
