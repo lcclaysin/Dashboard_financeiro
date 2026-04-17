@@ -18,13 +18,42 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body>
-
+    <div id="login-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--fundo); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
+        <div style="background: var(--cartao); padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; max-width: 350px; width: 90%;">
+            <i class="fa-solid fa-vault" style="font-size: 40px; color: var(--cor-primaria); margin-bottom: 20px;"></i>
+            <h2 style="margin-bottom: 25px; color: var(--texto);">Acesso Restrito</h2>
+            
+            <form id="form-login" style="display: flex; flex-direction: column; gap: 15px;">
+                <input type="email" id="email-login" placeholder="E-mail" required style="padding: 12px; border-radius: 10px; border: 1px solid #dfe6e9; background: var(--fundo); color: var(--texto);">
+                <input type="password" id="senha-login" placeholder="Senha" required style="padding: 12px; border-radius: 10px; border: 1px solid #dfe6e9; background: var(--fundo); color: var(--texto);">
+                <button type="submit" style="padding: 12px; border-radius: 10px; background: var(--gradiente-btn); color: white; font-weight: bold; border: none; cursor: pointer; margin-top: 10px;">Entrar no Sistema</button>
+            </form>
+            <p id="msg-erro-login" style="color: var(--cor-alerta); font-size: 13px; margin-top: 15px; display: none;">Credenciais inválidas.</p>
+        </div>
+    </div>
     <div class="dashboard-container">
-        <div class="top-header">
-            <h1>Painel de Controle Financeiro</h1>
-            <button id="theme-toggle" class="btn-theme" onclick="toggleTheme()" title="Mudar Tema">
-                <i class="fa-solid fa-moon"></i>
-            </button>
+        <div id="area-admin" style="display: none; background: var(--cartao); padding: 20px; border-radius: 15px; margin-bottom: 25px; border: 1px solid var(--cor-primaria);">
+            <h3 style="color: var(--texto); margin-bottom: 15px;"><i class="fa-solid fa-user-shield"></i> Gestão de Acessos</h3>
+            <form id="form-cadastro-admin" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="email" id="novo-email-admin" placeholder="E-mail do novo usuário" required style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #dfe6e9; background: var(--fundo); color: var(--texto);">
+                <input type="password" id="nova-senha-admin" placeholder="Senha inicial" required style="padding: 10px; border-radius: 8px; border: 1px solid #dfe6e9; background: var(--fundo); color: var(--texto);">
+                <button type="submit" style="padding: 10px 20px; border-radius: 8px; background: var(--gradiente-btn); color: white; border: none; cursor: pointer; font-weight: bold;">Cadastrar Operador</button>
+            </form>
+            <p id="msg-sucesso-admin" style="color: var(--cor-primaria); font-size: 13px; margin-top: 10px; display: none;">Usuário cadastrado com sucesso!</p>
+        </div>
+        <div class="top-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+            <h2 style="color: var(--texto);">Painel de Controle Financeiro</h2>
+            
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <span id="saudacao-usuario" style="color: var(--texto); font-weight: 600; font-size: 15px; border-right: 2px solid #dfe6e9; padding-right: 15px;"></span>
+                
+                <button id="theme-toggle" onclick="toggleTheme()" title="Mudar Tema" style="background: transparent; border: none; font-size: 22px; cursor: pointer; color: var(--texto); transition: 0.3s;">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button id="btn-logout" onclick="fazerLogout()" title="Sair do Sistema" style="background: transparent; border: none; font-size: 22px; cursor: pointer; color: var(--cor-alerta); transition: 0.3s;">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
         </div>
 
         <div class="resumo-grid">
@@ -141,6 +170,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>

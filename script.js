@@ -1,14 +1,43 @@
+// --- 0. CONEXÃO COM A NUVEM (FIREBASE) ---
+import { getFirestore, collection, addDoc, getDocs, onSnapshot, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+// NOVO: Ferramentas de Login
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAHk_Rwev-ZkkzJflzh7l5Ei1EBZwEgntA",
+  authDomain: "dashboard-financeiro-911a0.firebaseapp.com",
+  projectId: "dashboard-financeiro-911a0",
+  storageBucket: "dashboard-financeiro-911a0.firebasestorage.app",
+  messagingSenderId: "329815045435",
+  appId: "1:329815045435:web:37cbd62ed7fd399fcc731e"
+  // Removi o analytics para manter o app focado em performance
+};
+
+// Ligando o motor
+const app = initializeApp(firebaseConfig);
+
+// Criando o "gancho" para o Banco de Dados e para a Autenticação
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+
 // --- 1. BANCOS DE DADOS ---
-let transacoes = JSON.parse(localStorage.getItem('bancoDashboard')) || [];
 let categorias = JSON.parse(localStorage.getItem('categoriasDashboard')) || [];
 let coresCategorias = JSON.parse(localStorage.getItem('coresDashboardCores')) || { 'Geral': '#b2bec3' };
+
+let transacoes = []; // Começa vazio, a nuvem vai preencher
+const transacoesRef = collection(db, "transacoes"); // A nossa "pasta" na nuvem
+
+// --- 2. MÁGICA DO TEMPO REAL (Ouvinte) ---
 
 if (!categorias.includes('Geral')) {
     categorias.unshift('Geral');
     localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
 }
 
-// --- 0. GESTÃO DO TEMA CLARO/ESCURO ---
+// --- 1.1. GESTÃO DO TEMA CLARO/ESCURO ---
 const temaSalvo = localStorage.getItem('temaDashboard');
 if (temaSalvo === 'dark' || (!temaSalvo && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     document.body.classList.add('dark-theme');
@@ -235,18 +264,13 @@ function removerCategoria(nomeCategoria) {
     atualizarTela();
 }
 
-function removerTransacao(index) {
-    transacoes.splice(index, 1);
-    localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
-    atualizarTela();
-}
 
 function atualizarTela() {
     corpoTabela.innerHTML = '';
     let totalReceitas = 0; let totalDespesas = 0;
     let transacoesFiltradas = [];
 
-    transacoes.forEach((transacao, index) => {
+transacoes.forEach((transacao, index) => {
         let passaTipo = (filtroTipo.value === 'todos' || transacao.tipo === filtroTipo.value);
         let passaCategoria = (filtroCategoria.value === 'todas' || transacao.categoria === filtroCategoria.value);
         let passaData = true;
@@ -257,33 +281,42 @@ function atualizarTela() {
         if (passaTipo && passaData && passaCategoria) {
             transacoesFiltradas.push(transacao);
 
-            if(transacao.tipo === 'receita') totalReceitas += transacao.valor;
-            else totalDespesas += transacao.valor;
+            // ESCUDO DE PROTEÇÃO: Se o valor vier quebrado da nuvem, vira 0
+            let valorSeguro = parseFloat(transacao.valor) || 0;
+
+            if(transacao.tipo === 'receita') totalReceitas += valorSeguro;
+            else totalDespesas += valorSeguro;
 
             let dataFormatada = transacao.data ? transacao.data.split('-').reverse().join('/') : 'Sem Data';
             let catVisual = transacao.categoria ? transacao.categoria : 'Geral'; 
             
             let corDaTag = coresCategorias[catVisual] || '#b2bec3';
-            let corDoTextoIdeal = getCorTextoIdeal(corDaTag); // Chama o cérebro matemático da cor
+            let corDoTextoIdeal = getCorTextoIdeal(corDaTag);
 
-            // Criando a linha com um ID único para podermos achá-la depois
             const tr = document.createElement('tr');
-            tr.id = `linha-${index}`; 
+            tr.id = `linha-${transacao.id}`; 
             
             tr.innerHTML = `
                 <td data-label="Data">${dataFormatada}</td>
                 <td data-label="Descrição" style="font-weight: 500;">${transacao.descricao}</td>
                 <td data-label="Categoria">
-                    <span style="background: ${corDaTag}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corDoTextoIdeal}; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: 0.5px;">
-                        ${catVisual}
-                    </span>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
+                        <span style="background: ${corDaTag}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corDoTextoIdeal}; font-weight: 700; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: 0.5px;">
+                            ${catVisual}
+                        </span>
+                        ${(auth.currentUser && auth.currentUser.uid === ADMIN_UID && transacao.nomeUsuario) ? 
+                          `<span style="background: var(--fundo); border: 1px solid #dfe6e9; padding: 4px 8px; border-radius: 6px; font-size: 10px; color: var(--texto); white-space: nowrap; opacity: 0.85;">
+                              <i class="fa-solid fa-user-pen" style="margin-right: 4px;"></i>${transacao.nomeUsuario}
+                          </span>` 
+                          : ''}
+                    </div>
                 </td>
                 <td data-label="Tipo" style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600; font-size: 12px;">${transacao.tipo.toUpperCase()}</td>
-                <td data-label="Valor" style="font-weight: 700;">R$ ${transacao.valor.toFixed(2)}</td>
+                <td data-label="Valor" style="font-weight: 700;">R$ ${valorSeguro.toFixed(2)}</td>
                 <td data-label="Ações">
                     <div style="display: flex; gap: 15px;">
-                        <button class="btn-editar" onclick="prepararEdicao(${index})" title="Editar" style="background:transparent; border:none; color:#0984e3; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
-                        <button class="btn-excluir" onclick="removerTransacao(${index})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                        <button class="btn-editar" onclick="prepararEdicao('${transacao.id}')" title="Editar" style="background:transparent; border:none; color:#0984e3; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn-excluir" onclick="removerTransacao('${transacao.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             `;
@@ -300,6 +333,167 @@ function atualizarTela() {
     atualizarProgressoMeta(totalReceitas);
     atualizarGrafico(totalReceitas, totalDespesas);
     atualizarGraficoBarras(transacoesFiltradas);
+}
+
+// --- 13. SISTEMA DE AUTENTICAÇÃO (LOGIN / LOGOUT) ---
+const overlayLogin = document.getElementById('login-overlay');
+const formLogin = document.getElementById('form-login');
+const msgErro = document.getElementById('msg-erro-login');
+
+// Fica vigiando 24h se o usuário está logado ou não
+// --- SISTEMA DE HIERARQUIA E AUTENTICAÇÃO ---
+// --- SISTEMA DE HIERARQUIA E AUTENTICAÇÃO ---
+const ADMIN_UID = "RBEUXYma3kQXTDjK1kT4m1bCQyL2"; // EXATAMENTE igual ao painel do Firebase
+let unsubscribeSnapshot = null; 
+
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        if (overlayLogin) overlayLogin.style.display = 'none';
+
+        // 1. LÓGICA DO NOME (BEM-VINDO)
+        let nomeDoUsuario = user.displayName;
+        if (!nomeDoUsuario) {
+            // Se for a primeira vez, pergunta o nome
+            nomeDoUsuario = prompt("Bem-vindo! Qual é o seu nome ou apelido para o sistema?");
+            if (!nomeDoUsuario) nomeDoUsuario = "Operador"; // Nome padrão se a pessoa não digitar nada
+            
+            // Salva o nome na conta do Google Firebase permanentemente
+            await updateProfile(user, { displayName: nomeDoUsuario });
+        }
+        
+        // Mostra o nome na tela COM O BOTÃO DE EDITAR
+        const saudacao = document.getElementById('saudacao-usuario');
+        if (saudacao) {
+            saudacao.innerHTML = `
+                <span style="font-weight: 400;">Olá,</span> 
+                <strong style="color: var(--cor-primaria);">${nomeDoUsuario}</strong>
+                <button onclick="mudarNome()" title="Editar Nome" style="background: transparent; border: none; color: var(--texto); cursor: pointer; opacity: 0.5; font-size: 12px; margin-left: 5px;">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+            `;
+        }
+
+        // MOSTRA A ÁREA DE ADMIN APENAS PARA O MESTRE
+        const areaAdmin = document.getElementById('area-admin');
+        if (user.uid === ADMIN_UID) {
+            areaAdmin.style.display = 'block';
+        } else {
+            areaAdmin.style.display = 'none';
+        }
+
+        // 2. LÓGICA DO BANCO (MESTRE VS OPERADOR)
+        let consultaBanco;
+        if (user.uid === ADMIN_UID) {
+            consultaBanco = transacoesRef; // Você (Mestre) puxa tudo
+        } else {
+            consultaBanco = query(transacoesRef, where("userId", "==", user.uid)); // Eles puxam só o deles
+        }
+
+        if (unsubscribeSnapshot) unsubscribeSnapshot(); 
+        unsubscribeSnapshot = onSnapshot(consultaBanco, (snapshot) => {
+            transacoes = []; 
+            snapshot.forEach((documento) => {
+                transacoes.push({ id: documento.id, ...documento.data() }); 
+            });
+            atualizarTela(); 
+        });
+
+    } else {
+        if (overlayLogin) overlayLogin.style.display = 'flex';
+        if (unsubscribeSnapshot) unsubscribeSnapshot(); 
+        transacoes = []; 
+        atualizarTela();
+    }
+
+    
+});
+
+// --- FUNÇÃO PARA O MESTRE CADASTRAR NOVOS USUÁRIOS ---
+const formAdmin = document.getElementById('form-cadastro-admin');
+if (formAdmin) {
+    formAdmin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('novo-email-admin').value;
+        const senha = document.getElementById('nova-senha-admin').value;
+        const msg = document.getElementById('msg-sucesso-admin');
+
+        try {
+            // Criamos uma instância secundária rápida só para o cadastro
+            // Isso evita que o Firebase te deslogue ao criar a conta
+            const appSecundario = initializeApp(firebaseConfig, "Secondary");
+            const authSecundario = getAuth(appSecundario);
+            
+            await createUserWithEmailAndPassword(authSecundario, email, senha);
+            
+            // Limpa a instância secundária para não dar erro de duplicata
+            await deleteApp(appSecundario);
+
+            msg.style.display = 'block';
+            formAdmin.reset();
+            setTimeout(() => { msg.style.display = 'none'; }, 3000);
+            
+        } catch (error) {
+            console.error("Erro ao cadastrar via Admin:", error);
+            alert("Erro: " + error.message);
+        }
+    });
+}
+
+// Quando clicar em "Entrar no Sistema"
+if (formLogin) {
+    formLogin.addEventListener('submit', async (e) => {
+        e.preventDefault(); // Impede a página de piscar/recarregar
+        console.log("TENTATIVA: Enviando dados para a nuvem...");
+        
+        const email = document.getElementById('email-login').value;
+        const senha = document.getElementById('senha-login').value;
+        const btn = formLogin.querySelector('button');
+        const textoOriginal = btn.innerText;
+        
+        try {
+            msgErro.style.display = 'none'; 
+            btn.innerText = "Autenticando..."; // Dá um feedback visual no botão
+            
+            await signInWithEmailAndPassword(auth, email, senha);
+            
+            // Se chegou aqui, a senha estava certa! O onAuthStateChanged vai esconder a tela.
+            btn.innerText = textoOriginal; 
+        } catch (error) {
+            console.error("FALHA no login:", error.code);
+            msgErro.style.display = 'block';
+            msgErro.innerText = "Credenciais inválidas. Verifique o e-mail e a senha.";
+            btn.innerText = textoOriginal;
+        }
+    });
+}
+
+// Função para deslogar
+function fazerLogout() {
+    signOut(auth).then(() => {
+        // O onAuthStateChanged vai perceber e mostrar a tela de login novamente
+        document.getElementById('email-login').value = '';
+        document.getElementById('senha-login').value = '';
+    }).catch((error) => {
+        console.error("Erro ao sair:", error);
+    });
+}
+
+// --- FUNÇÃO PARA ALTERAR O NOME DE USUÁRIO ---
+async function mudarNome() {
+    if (!auth.currentUser) return;
+    
+    const novoNome = prompt("Digite o seu nome correto:", auth.currentUser.displayName);
+    
+    if (novoNome && novoNome.trim() !== "") {
+        try {
+            await updateProfile(auth.currentUser, { displayName: novoNome.trim() });
+            // Atualiza os lançamentos antigos que já estavam com o nome errado na tela (apenas visualmente até recarregar)
+            location.reload(); 
+        } catch (erro) {
+            console.error("Erro ao atualizar o nome:", erro);
+            alert("Não foi possível alterar o nome agora.");
+        }
+    }
 }
 
 // --- 7. GRÁFICOS ---
@@ -431,48 +625,53 @@ if ('serviceWorker' in navigator) {
 let idEdicao = null;
 
 // --- 6.1 EXCLUSÃO COM CONFIRMAÇÃO ---
-function removerTransacao(index) {
+/*function removerTransacao(index) {
     if (confirm("Deseja realmente excluir este lançamento? Esta ação não pode ser desfeita.")) {
         transacoes.splice(index, 1);
         localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
         atualizarTela();
     }
+}*/
+
+// --- 6.1 EXCLUSÃO NA NUVEM ---
+async function removerTransacao(id) {
+    if (confirm("Deseja realmente excluir este lançamento? Esta ação não pode ser desfeita.")) {
+        // Manda o Firebase apagar o documento com este ID
+        await deleteDoc(doc(db, "transacoes", id));
+        // O onSnapshot deteta a exclusão e limpa a linha da tabela automaticamente!
+    }
 }
 
 // --- 6.2 LÓGICA DE EDIÇÃO ---
-function prepararEdicao(index) {
-    const t = transacoes[index];
-    idEdicao = index;
+function prepararEdicao(id) {
+    // Procura na nossa lista local qual é o item que tem este ID
+    const t = transacoes.find(item => item.id === id);
+    if (!t) return;
 
-    // Preenche o formulário
+    idEdicao = id;
+
     document.getElementById('descricao').value = t.descricao;
     document.getElementById('valor').value = t.valor;
     document.getElementById('data').value = t.data;
     document.getElementById('categoria').value = t.categoria;
     document.getElementById('tipo').value = t.tipo;
 
-    // CORREÇÃO DO BUG: Atualiza a cor lateral da caixinha de categoria
     atualizarCorDaCaixaDeSelecao();
 
-    // Muda o visual do botão e do formulário
     const btn = document.getElementById('btn-salvar-transacao');
     btn.innerText = "Salvar Alteração";
     btn.style.background = "linear-gradient(135deg, #f39c12, #e67e22)";
     document.querySelector('.form-container').classList.add('modo-edicao');
     
-    // Rola a tela exatamente para o centro do formulário
-    document.querySelector('.form-container').scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'center' 
-    });
+    document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // Memória temporária para guardar a última categoria e data de inclusão
 let ultimaCategoriaAdicionada = 'Geral';
 let ultimaDataAdicionada = getDataHoje(); // NOVO: Inicia com a data de hoje
 
-// --- LÓGICA DE SALVAR / EDITAR TRANSAÇÕES ---
-form.addEventListener('submit', function(evento) {
+// --- LÓGICA DE SALVAR / EDITAR NA NUVEM ---
+form.addEventListener('submit', async function(evento) {
     evento.preventDefault(); 
 
     const dados = {
@@ -480,50 +679,59 @@ form.addEventListener('submit', function(evento) {
         valor: parseFloat(document.getElementById('valor').value),
         tipo: document.getElementById('tipo').value,
         data: document.getElementById('data').value || getDataHoje(),
-        categoria: document.getElementById('categoria').value
+        categoria: document.getElementById('categoria').value,
+        userId: auth.currentUser.uid, // CARIMBO: Registra quem criou este dado
+        nomeUsuario: auth.currentUser.displayName || "Operador" // NOVO: Carimba o nome do autor!
     };
 
-    let indexParaRolar = null; // Variável para lembrar qual linha devemos visitar
+    let indexParaRolar = null; 
 
-    if (idEdicao !== null) {
-        transacoes[idEdicao] = dados;
-        indexParaRolar = idEdicao; // Guarda a posição de quem foi editado
-        idEdicao = null; 
-        
-        const btn = document.getElementById('btn-salvar-transacao');
-        btn.innerText = "Adicionar";
-        btn.style.background = "var(--gradiente-btn)";
-        document.querySelector('.form-container').classList.remove('modo-edicao');
-    } else {
-        transacoes.push(dados);
-        ultimaCategoriaAdicionada = dados.categoria; 
-        ultimaDataAdicionada = dados.data; 
-    }
+    try {
+        if (idEdicao !== null) {
+            // MODO EDIÇÃO: Atualiza o documento específico na nuvem
+            const documentoRef = doc(db, "transacoes", idEdicao);
+            await updateDoc(documentoRef, dados);
+            
+            indexParaRolar = idEdicao; 
+            idEdicao = null; 
+            
+            const btn = document.getElementById('btn-salvar-transacao');
+            btn.innerText = "Adicionar";
+            btn.style.background = "var(--gradiente-btn)";
+            document.querySelector('.form-container').classList.remove('modo-edicao');
+        } else {
+            // MODO NOVO: Cria um documento novo na nuvem
+            const novoDoc = await addDoc(transacoesRef, dados);
+            indexParaRolar = novoDoc.id; // Guarda o ID gerado para rolar a página depois
+            ultimaCategoriaAdicionada = dados.categoria; 
+            ultimaDataAdicionada = dados.data; 
+        }
 
-    localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
-    atualizarTela();
-    
-    form.reset();
-    document.getElementById('data').value = ultimaDataAdicionada;
-    document.getElementById('categoria').value = ultimaCategoriaAdicionada;
-    atualizarCorDaCaixaDeSelecao();
+        // ATENÇÃO: Repare que já não usamos localStorage aqui! 
+        // O onSnapshot lá em cima vai perceber a mudança e atualizar a tela sozinho.
 
-    // NOVO: Efeito de Rolagem e Destaque (Pisca)
-    if (indexParaRolar !== null) {
-        setTimeout(() => { // Aguarda 100ms para a tabela ser desenhada na tela
+        form.reset();
+        document.getElementById('data').value = ultimaDataAdicionada;
+        document.getElementById('categoria').value = ultimaCategoriaAdicionada;
+        atualizarCorDaCaixaDeSelecao();
+
+        // Efeito de Rolagem e Destaque
+        setTimeout(() => { 
             const linhaAtualizada = document.getElementById(`linha-${indexParaRolar}`);
             if (linhaAtualizada) {
-                // Rola suavemente até o cartão parar no meio da tela
                 linhaAtualizada.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
-                // Pisca a linha em azul claro e depois devolve a cor original
                 linhaAtualizada.style.transition = "background-color 0.8s";
                 linhaAtualizada.style.backgroundColor = "rgba(9, 132, 227, 0.2)";
                 setTimeout(() => { linhaAtualizada.style.backgroundColor = ""; }, 1000);
             }
-        }, 100);
+        }, 500); // Damos 500ms para a nuvem responder e a tabela ser desenhada
+
+    } catch (erro) {
+        console.error("Erro ao comunicar com o Firebase:", erro);
+        alert("Ocorreu um erro ao guardar os dados na nuvem.");
     }
 });
+
 // --- 11. BACKUP E RESTAURAÇÃO ---
 function exportarDados() {
     const dadosParaExportar = {
@@ -608,6 +816,29 @@ function exportarExcel() {
     link.click();
     document.body.removeChild(link);
 }
+
+// --- 12. EXPORTANDO TODAS AS FUNÇÕES PARA O HTML (Requisito do type="module") ---
+window.toggleTheme = toggleTheme;
+window.abrirModal = abrirModal;
+// Caso você tenha as funções de fechar e salvar a categoria direto no HTML, já garantimos elas aqui:
+if (typeof fecharModal !== 'undefined') window.fecharModal = fecharModal;
+if (typeof salvarCategoria !== 'undefined') window.salvarCategoria = salvarCategoria;
+
+// --- 12. A CHAVE MESTRA: EXPORTANDO FUNÇÕES PARA O HTML ---
+window.toggleTheme = toggleTheme;
+window.definirMeta = definirMeta;
+window.abrirModal = abrirModal;
+window.fecharModal = fecharModal;
+window.adicionarCategoria = adicionarCategoria;
+window.removerCategoria = removerCategoria;
+window.prepararEdicao = prepararEdicao;
+window.removerTransacao = removerTransacao;
+window.exportarExcel = exportarExcel;
+window.exportarDados = exportarDados;
+window.importarDados = importarDados;
+window.gerarPDF = gerarPDF;
+window.fazerLogout = fazerLogout;
+window.mudarNome = mudarNome;
 
 // --- 9. INICIA O SISTEMA ---
 atualizarListasDeCategorias();
