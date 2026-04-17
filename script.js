@@ -235,26 +235,6 @@ function removerCategoria(nomeCategoria) {
     atualizarTela();
 }
 
-// --- 6. LÓGICA DE TRANSAÇÕES ---
-form.addEventListener('submit', function(evento) {
-    evento.preventDefault(); 
-
-    const descricao = document.getElementById('descricao').value;
-    const valor = parseFloat(document.getElementById('valor').value);
-    const tipo = document.getElementById('tipo').value;
-    const data = document.getElementById('data').value || getDataHoje();
-    const categoriaSelecionada = document.getElementById('categoria').value; 
-
-    transacoes.push({ descricao, valor, tipo, data, categoria: categoriaSelecionada });
-    localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
-
-    atualizarTela();
-    form.reset();
-    document.getElementById('data').value = getDataHoje();
-    document.getElementById('categoria').value = categoriaSelecionada; 
-    atualizarCorDaCaixaDeSelecao(); // Garante que a borda continue certa após enviar
-});
-
 function removerTransacao(index) {
     transacoes.splice(index, 1);
     localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
@@ -299,6 +279,7 @@ function atualizarTela() {
                 <td data-label="Tipo" style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600; font-size: 12px;">${transacao.tipo.toUpperCase()}</td>
                 <td data-label="Valor" style="font-weight: 700;">R$ ${transacao.valor.toFixed(2)}</td>
                 <td data-label="Ações" style="text-align: center;">
+                    <button class="btn-editar" onclick="prepararEdicao(${index})" title="Editar" style="background:transparent; border:none; color:#0984e3; cursor:pointer; margin-right:10px;"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn-excluir" onclick="removerTransacao(${index})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </td>
             `;
@@ -358,6 +339,7 @@ function atualizarGraficoBarras(listaFiltrada) {
 }
 
 // --- 8. EXPORTAR PDF ---
+// --- 8. EXPORTAR PDF (CORRIGIDO) ---
 function gerarPDF() {
     const dataHoje = new Date();
     const dia = String(dataHoje.getDate()).padStart(2, '0');
@@ -370,10 +352,12 @@ function gerarPDF() {
     if (!nomeArquivo.endsWith('.pdf')) nomeArquivo += '.pdf';
 
     const elemento = document.querySelector(".tabela-container");
-    const btnPdf = document.querySelector('.btn-pdf');
+    
+    // Captura a caixa com todos os botões novos
+    const grupoBotoes = document.getElementById('grupo-botoes'); 
     const areaFiltros = document.querySelector('.filtro-area');
     const colunasAcoes = document.querySelectorAll('th:last-child, td:last-child');
-    const tituloOriginal = document.querySelector('.tabela-header h3');
+    const tituloOriginal = document.getElementById('titulo-historico'); 
 
     const body = document.body;
     const estavaEscuro = body.classList.contains('dark-theme');
@@ -385,9 +369,14 @@ function gerarPDF() {
     const selTipo = document.getElementById('filtro-tipo'); const selCat = document.getElementById('filtro-categoria');
     const txtTipo = selTipo.options[selTipo.selectedIndex].text; const txtCat = selCat.options[selCat.selectedIndex].text;
 
-    btnPdf.style.display = 'none'; areaFiltros.style.display = 'none'; tituloOriginal.style.display = 'none'; 
+    // ESCONDE TUDO PARA A FOTO DO PDF
+    if (grupoBotoes) grupoBotoes.style.display = 'none'; 
+    if (areaFiltros) areaFiltros.style.display = 'none'; 
+    if (tituloOriginal) tituloOriginal.style.display = 'none'; 
     colunasAcoes.forEach(celula => celula.style.display = 'none');
-    window.scrollTo(0, 0); elemento.style.overflow = 'visible'; 
+    
+    window.scrollTo(0, 0); 
+    elemento.style.overflow = 'visible'; 
 
     const infoPDF = document.createElement('div');
     infoPDF.id = 'info-impressao'; 
@@ -413,10 +402,192 @@ function gerarPDF() {
         margin: 10, filename: nomeArquivo, image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }).from(elemento).save().then(() => {
-        btnPdf.style.display = ''; areaFiltros.style.display = ''; tituloOriginal.style.display = ''; colunasAcoes.forEach(celula => celula.style.display = '');
-        document.getElementById('info-impressao').remove(); elemento.style.overflow = 'auto'; 
+        // MOSTRA OS BOTÕES DE VOLTA DEPOIS DA FOTO
+        if (grupoBotoes) grupoBotoes.style.display = 'flex'; 
+        if (areaFiltros) areaFiltros.style.display = 'flex'; 
+        if (tituloOriginal) tituloOriginal.style.display = 'block'; 
+        colunasAcoes.forEach(celula => celula.style.display = '');
+        
+        document.getElementById('info-impressao').remove(); 
+        elemento.style.overflow = 'auto'; 
         if (estavaEscuro) { body.classList.add('dark-theme'); }
     });
+}
+
+// --- 10. REGISTRO DO APLICATIVO (PWA) ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('App registrado com sucesso!'))
+            .catch(err => console.log('Falha ao registrar o App:', err));
+    });
+}
+
+// VARIÁVEL GLOBAL PARA CONTROLE DE EDIÇÃO
+let idEdicao = null;
+
+// --- 6.1 EXCLUSÃO COM CONFIRMAÇÃO ---
+function removerTransacao(index) {
+    if (confirm("Deseja realmente excluir este lançamento? Esta ação não pode ser desfeita.")) {
+        transacoes.splice(index, 1);
+        localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
+        atualizarTela();
+    }
+}
+
+// --- 6.2 LÓGICA DE EDIÇÃO ---
+function prepararEdicao(index) {
+    const t = transacoes[index];
+    idEdicao = index;
+
+    // Preenche o formulário
+    document.getElementById('descricao').value = t.descricao;
+    document.getElementById('valor').value = t.valor;
+    document.getElementById('data').value = t.data;
+    document.getElementById('categoria').value = t.categoria;
+    document.getElementById('tipo').value = t.tipo;
+
+    // CORREÇÃO DO BUG: Atualiza a cor lateral da caixinha de categoria
+    atualizarCorDaCaixaDeSelecao();
+
+    // Muda o visual do botão e do formulário
+    const btn = document.getElementById('btn-salvar-transacao');
+    btn.innerText = "Salvar Alteração";
+    btn.style.background = "linear-gradient(135deg, #f39c12, #e67e22)";
+    document.querySelector('.form-container').classList.add('modo-edicao');
+    
+    // Rola a tela para o topo para o usuário ver o formulário preenchido
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Memória temporária para guardar a última categoria e data de inclusão
+let ultimaCategoriaAdicionada = 'Geral';
+let ultimaDataAdicionada = getDataHoje(); // NOVO: Inicia com a data de hoje
+
+// --- LÓGICA DE SALVAR / EDITAR TRANSAÇÕES (VERSÃO FINAL) ---
+form.addEventListener('submit', function(evento) {
+    evento.preventDefault(); 
+
+    const dados = {
+        descricao: document.getElementById('descricao').value,
+        valor: parseFloat(document.getElementById('valor').value),
+        tipo: document.getElementById('tipo').value,
+        data: document.getElementById('data').value || getDataHoje(),
+        categoria: document.getElementById('categoria').value
+    };
+
+    if (idEdicao !== null) {
+        // MODO EDIÇÃO
+        transacoes[idEdicao] = dados;
+        idEdicao = null; 
+        
+        const btn = document.getElementById('btn-salvar-transacao');
+        btn.innerText = "Adicionar";
+        btn.style.background = "var(--gradiente-btn)";
+        document.querySelector('.form-container').classList.remove('modo-edicao');
+    } else {
+        // MODO NOVO: Salva os dados na memória temporária
+        transacoes.push(dados);
+        ultimaCategoriaAdicionada = dados.categoria; 
+        ultimaDataAdicionada = dados.data; // NOVO: Grava a última data usada
+    }
+
+    localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
+    atualizarTela();
+    
+    // Limpa o formulário
+    form.reset();
+    
+    // NOVO: Restaura a última data e categoria usadas na inclusão
+    document.getElementById('data').value = ultimaDataAdicionada;
+    document.getElementById('categoria').value = ultimaCategoriaAdicionada;
+    
+    atualizarCorDaCaixaDeSelecao();
+});
+
+// --- 11. BACKUP E RESTAURAÇÃO ---
+function exportarDados() {
+    const dadosParaExportar = {
+        transacoes: transacoes,
+        categorias: categorias,
+        cores: coresCategorias,
+        meta: { nome: metaNome, valor: metaFinanceira }
+    };
+
+    const blob = new Blob([JSON.stringify(dadosParaExportar, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_financeiro_${getDataHoje()}.json`;
+    a.click();
+}
+
+function importarDados(event) {
+    const arquivo = event.target.files[0];
+    if (!arquivo) return;
+
+    const leitor = new FileReader();
+    leitor.onload = function(e) {
+        try {
+            const dados = JSON.parse(e.target.result);
+            if (confirm("Isso irá substituir todos os dados atuais. Deseja continuar?")) {
+                transacoes = dados.transacoes || [];
+                categorias = dados.categorias || [];
+                coresCategorias = dados.cores || {};
+                metaNome = dados.meta?.nome || 'Meta do Período';
+                metaFinanceira = dados.meta?.valor || 0;
+
+                localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
+                localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
+                localStorage.setItem('coresDashboardCores', JSON.stringify(coresCategorias));
+                localStorage.setItem('metaNome', metaNome);
+                localStorage.setItem('metaFinanceira', metaFinanceira);
+
+                location.reload(); // Recarrega para aplicar tudo
+            }
+        } catch (err) {
+            alert("Erro ao ler o arquivo de backup.");
+        }
+    };
+    leitor.readAsText(arquivo);
+}
+
+// --- 11.1 EXPORTAR PARA EXCEL (CSV) ---
+function exportarExcel() {
+    if (transacoes.length === 0) {
+        alert("Não há dados para exportar.");
+        return;
+    }
+
+    // 1. Criar o cabeçalho das colunas
+    let csvContent = "Data;Descricao;Categoria;Tipo;Valor\n";
+
+    // 2. Percorrer as transações e adicionar as linhas
+    transacoes.forEach(t => {
+        // Formata a data de AAAA-MM-DD para DD/MM/AAAA para o Excel brasileiro
+        const dataFormatada = t.data.split('-').reverse().join('/');
+        
+        // Formata o valor trocando ponto por vírgula para o Excel entender como número
+        const valorFormatado = t.valor.toFixed(2).replace('.', ',');
+
+        // Monta a linha separada por ponto e vírgula (padrão brasileiro do Excel)
+        const linha = `${dataFormatada};${t.descricao};${t.categoria};${t.tipo.toUpperCase()};${valorFormatado}\n`;
+        csvContent += linha;
+    });
+
+    // 3. Criar o arquivo para download
+    // O prefixo \uFEFF serve para o Excel entender que o arquivo tem acentos (UTF-8)
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Relatorio_Financeiro_${getDataHoje()}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // --- 9. INICIA O SISTEMA ---

@@ -172,7 +172,7 @@ th, td { padding: 15px 12px; border-bottom: 1px solid #f1f2f6; }
 th { background-color: transparent; color: #b2bec3; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;}
 .btn-excluir { background-color: transparent; color: #dfe6e9; border: none; padding: 8px; cursor: pointer; font-size: 16px; transition: 0.3s; }
 .btn-excluir:hover { color: var(--cor-alerta); transform: scale(1.2); }
-table th:last-child, table td:last-child { width: 60px; text-align: center; }
+table th:last-child, table td:last-child { width: 100px; text-align: center; }
 
 .btn-pdf { background-color: #2d3436; color: white; border: none; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.3s; display: flex; align-items: center; gap: 8px; }
 .btn-pdf:hover { background-color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -221,6 +221,26 @@ table th:last-child, table td:last-child { width: 60px; text-align: center; }
 .btn-meta-edit { background: transparent; border: none; color: #a29bfe; cursor: pointer; font-size: 14px; transition: 0.2s;}
 .btn-meta-edit:hover { color: #6c5ce7; transform: scale(1.1); }
 
+.btn-secundario {
+    background-color: var(--card-bg);
+    color: var(--texto);
+    border: 1px solid #edf2f7;
+    padding: 10px 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.btn-secundario:hover {
+    background-color: #f1f2f6;
+    border-color: var(--cor-primaria);
+}
+
+/* Estilo para o modo de edição no formulário */
+.modo-edicao {
+    border: 2px solid #0984e3 !important;
+    background-color: rgba(9, 132, 227, 0.05) !important;
+}
+
 @media (max-width: 900px) { .meio-grid, .graficos-wrapper { grid-template-columns: 1fr; } }
 @media (max-width: 600px) {
     /* Adiciona um espaço no final da tela para o botão não tampar a última linha */
@@ -262,6 +282,7 @@ table th:last-child, table td:last-child { width: 60px; text-align: center; }
     .tabela-container table td:last-child {
         border-bottom: none; /* Remove a linha da última célula (Ações) */
         justify-content: center; /* Centraliza a lixeira */
+        gap: 15px;
         padding-top: 15px;
     }
 

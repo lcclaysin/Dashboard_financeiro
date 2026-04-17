@@ -6,6 +6,10 @@
 
     <title>Dashboard Financeiro</title>
 
+    <meta name="theme-color" content="#00b894">
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -63,7 +67,7 @@
                         <option value="receita">Receita (Entrada)</option>
                         <option value="despesa">Despesa (Saída)</option>
                     </select>
-                    <button type="submit">Adicionar</button>
+                    <button type="submit" id="btn-salvar-transacao">Adicionar</button>
                 </form>
             </div>
 
@@ -80,8 +84,15 @@
         <div class="tabela-container">
             <div class="tabela-header">
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 2px solid var(--fundo); padding-bottom: 10px; margin-bottom: 15px;">
-                    <h3 style="margin: 0;">Histórico Recente</h3>
-                    <button onclick="gerarPDF()" class="btn-pdf"><i class="fa-solid fa-file-pdf"></i> Exportar Relatório</button>
+                    <h3 style="margin: 0;" id="titulo-historico">Histórico Recente</h3>
+                    
+                    <div id="grupo-botoes" style="display: flex; gap: 10px;">
+                        <button onclick="exportarExcel()" class="btn-secundario" title="Exportar para Excel" style="color: #27ae60;"><i class="fa-solid fa-file-excel"></i></button>
+                        <button onclick="exportarDados()" class="btn-secundario" title="Baixar Backup JSON"><i class="fa-solid fa-download"></i></button>
+                        <button onclick="document.getElementById('input-import').click()" class="btn-secundario" title="Restaurar Backup"><i class="fa-solid fa-upload"></i></button>
+                        <input type="file" id="input-import" style="display: none;" onchange="importarDados(event)">
+                        <button onclick="gerarPDF()" class="btn-pdf"><i class="fa-solid fa-file-pdf"></i> Exportar PDF</button>
+                    </div>
                 </div>
                 <div class="filtro-area">
                     <label><i class="fa-solid fa-filter"></i> Filtrar:</label>
