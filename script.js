@@ -266,8 +266,10 @@ function atualizarTela() {
             let corDaTag = coresCategorias[catVisual] || '#b2bec3';
             let corDoTextoIdeal = getCorTextoIdeal(corDaTag); // Chama o cérebro matemático da cor
 
+            // Criando a linha com um ID único para podermos achá-la depois
             const tr = document.createElement('tr');
-           // Substitua o tr.innerHTML existente no seu script.js por este aqui:
+            tr.id = `linha-${index}`; 
+            
             tr.innerHTML = `
                 <td data-label="Data">${dataFormatada}</td>
                 <td data-label="Descrição" style="font-weight: 500;">${transacao.descricao}</td>
@@ -278,9 +280,11 @@ function atualizarTela() {
                 </td>
                 <td data-label="Tipo" style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600; font-size: 12px;">${transacao.tipo.toUpperCase()}</td>
                 <td data-label="Valor" style="font-weight: 700;">R$ ${transacao.valor.toFixed(2)}</td>
-                <td data-label="Ações" style="text-align: center;">
-                    <button class="btn-editar" onclick="prepararEdicao(${index})" title="Editar" style="background:transparent; border:none; color:#0984e3; cursor:pointer; margin-right:10px;"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn-excluir" onclick="removerTransacao(${index})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                <td data-label="Ações">
+                    <div style="display: flex; gap: 15px;">
+                        <button class="btn-editar" onclick="prepararEdicao(${index})" title="Editar" style="background:transparent; border:none; color:#0984e3; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn-excluir" onclick="removerTransacao(${index})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                    </div>
                 </td>
             `;
             corpoTabela.appendChild(tr);
@@ -456,15 +460,18 @@ function prepararEdicao(index) {
     btn.style.background = "linear-gradient(135deg, #f39c12, #e67e22)";
     document.querySelector('.form-container').classList.add('modo-edicao');
     
-    // Rola a tela para o topo para o usuário ver o formulário preenchido
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Rola a tela exatamente para o centro do formulário
+    document.querySelector('.form-container').scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+    });
 }
 
 // Memória temporária para guardar a última categoria e data de inclusão
 let ultimaCategoriaAdicionada = 'Geral';
 let ultimaDataAdicionada = getDataHoje(); // NOVO: Inicia com a data de hoje
 
-// --- LÓGICA DE SALVAR / EDITAR TRANSAÇÕES (VERSÃO FINAL) ---
+// --- LÓGICA DE SALVAR / EDITAR TRANSAÇÕES ---
 form.addEventListener('submit', function(evento) {
     evento.preventDefault(); 
 
@@ -476,9 +483,11 @@ form.addEventListener('submit', function(evento) {
         categoria: document.getElementById('categoria').value
     };
 
+    let indexParaRolar = null; // Variável para lembrar qual linha devemos visitar
+
     if (idEdicao !== null) {
-        // MODO EDIÇÃO
         transacoes[idEdicao] = dados;
+        indexParaRolar = idEdicao; // Guarda a posição de quem foi editado
         idEdicao = null; 
         
         const btn = document.getElementById('btn-salvar-transacao');
@@ -486,25 +495,35 @@ form.addEventListener('submit', function(evento) {
         btn.style.background = "var(--gradiente-btn)";
         document.querySelector('.form-container').classList.remove('modo-edicao');
     } else {
-        // MODO NOVO: Salva os dados na memória temporária
         transacoes.push(dados);
         ultimaCategoriaAdicionada = dados.categoria; 
-        ultimaDataAdicionada = dados.data; // NOVO: Grava a última data usada
+        ultimaDataAdicionada = dados.data; 
     }
 
     localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
     atualizarTela();
     
-    // Limpa o formulário
     form.reset();
-    
-    // NOVO: Restaura a última data e categoria usadas na inclusão
     document.getElementById('data').value = ultimaDataAdicionada;
     document.getElementById('categoria').value = ultimaCategoriaAdicionada;
-    
     atualizarCorDaCaixaDeSelecao();
-});
 
+    // NOVO: Efeito de Rolagem e Destaque (Pisca)
+    if (indexParaRolar !== null) {
+        setTimeout(() => { // Aguarda 100ms para a tabela ser desenhada na tela
+            const linhaAtualizada = document.getElementById(`linha-${indexParaRolar}`);
+            if (linhaAtualizada) {
+                // Rola suavemente até o cartão parar no meio da tela
+                linhaAtualizada.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Pisca a linha em azul claro e depois devolve a cor original
+                linhaAtualizada.style.transition = "background-color 0.8s";
+                linhaAtualizada.style.backgroundColor = "rgba(9, 132, 227, 0.2)";
+                setTimeout(() => { linhaAtualizada.style.backgroundColor = ""; }, 1000);
+            }
+        }, 100);
+    }
+});
 // --- 11. BACKUP E RESTAURAÇÃO ---
 function exportarDados() {
     const dadosParaExportar = {
