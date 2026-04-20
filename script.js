@@ -28,7 +28,21 @@ let categorias = JSON.parse(localStorage.getItem('categoriasDashboard')) || [];
 let coresCategorias = JSON.parse(localStorage.getItem('coresDashboardCores')) || { 'Geral': '#b2bec3' };
 
 let transacoes = []; // Começa vazio, a nuvem vai preencher
-const transacoesRef = collection(db, "transacoes"); // A nossa "pasta" na nuvem
+// --- 1. PREPARAÇÃO DO BANCO DE DADOS (DEV vs PROD) ---
+let transacoes = []; 
+
+// O código verifica o endereço do navegador. Se for localhost ou 127.0.0.1, ele sabe que é o VS Code.
+const rodandoNoComputador = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+
+// Define o nome do cofre com base no ambiente
+const nomeDaColecao = rodandoNoComputador ? "transacoes_teste" : "transacoes";
+const transacoesRef = collection(db, nomeDaColecao);
+
+if (rodandoNoComputador) {
+    console.warn("⚠️ MODO DESENVOLVEDOR ATIVADO: Usando o banco de dados de TESTE.");
+} else {
+    console.log("✅ MODO PRODUÇÃO: Conectado ao banco oficial.");
+}
 
 // --- 2. MÁGICA DO TEMPO REAL (Ouvinte) ---
 
