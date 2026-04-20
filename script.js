@@ -755,13 +755,13 @@ function gerarPDF() {
 }
 
 // --- 10. REGISTRO DO APLICATIVO (PWA) ---
-if ('serviceWorker' in navigator) {
+/*if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
             .then(reg => console.log('App registrado com sucesso!'))
             .catch(err => console.log('Falha ao registrar o App:', err));
     });
-}
+}*/
 
 // VARIÁVEL GLOBAL PARA CONTROLE DE EDIÇÃO
 let idEdicao = null;
