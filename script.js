@@ -1,10 +1,9 @@
 // --- 0. CONEXÃO COM A NUVEM (FIREBASE) ---
-import { getFirestore, collection, addDoc, getDocs, onSnapshot, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
-// NOVO: Ferramentas de Login
+import { getFirestore, collection, addDoc, getDocs, onSnapshot, deleteDoc, doc, updateDoc, query, where, setDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
-
-
+// NOVO: Ferramentas do Storage
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js";
 const firebaseConfig = {
   apiKey: "AIzaSyAHk_Rwev-ZkkzJflzh7l5Ei1EBZwEgntA",
   authDomain: "dashboard-financeiro-911a0.firebaseapp.com",
@@ -18,10 +17,10 @@ const firebaseConfig = {
 // Ligando o motor
 const app = initializeApp(firebaseConfig);
 
-// Criando o "gancho" para o Banco de Dados e para a Autenticação
+// Criando o "gancho" para o Banco de Dados, Autenticação e Storage
 const db = getFirestore(app);
 const auth = getAuth(app);
-
+const storage = getStorage(app); // <-- LINHA NOVA
 
 // --- 1. BANCOS DE DADOS ---
 let categorias = JSON.parse(localStorage.getItem('categoriasDashboard')) || [];
@@ -41,7 +40,6 @@ if (rodandoNoComputador) {
 } else {
     console.log("🚀 MODO PRODUÇÃO: Conectado ao banco oficial!");
 }
-
 // --- 2. MÁGICA DO TEMPO REAL (Ouvinte) ---
 
 if (!categorias.includes('Geral')) {
@@ -276,55 +274,125 @@ function removerCategoria(nomeCategoria) {
     atualizarTela();
 }
 
-
+// --- FUNÇÃO PRINCIPAL DE ATUALIZAÇÃO DA TABELA ---
 function atualizarTela() {
+    if (!corpoTabela) return;
     corpoTabela.innerHTML = '';
-    let totalReceitas = 0; let totalDespesas = 0;
+    
+    let totalReceitas = 0; 
+    let totalDespesas = 0;
     let transacoesFiltradas = [];
 
-transacoes.forEach((transacao, index) => {
-        let passaTipo = (filtroTipo.value === 'todos' || transacao.tipo === filtroTipo.value);
-        let passaCategoria = (filtroCategoria.value === 'todas' || transacao.categoria === filtroCategoria.value);
+    // 1. CAPTURANDO TODOS OS VALORES DOS FILTROS
+    const filtroTipo = document.getElementById('filtro-tipo').value;
+    const filtroCategoria = document.getElementById('filtro-categoria').value;
+    const filtroDataInicio = document.getElementById('filtro-data-inicio').value;
+    const filtroDataFim = document.getElementById('filtro-data-fim').value;
+    const filtroStatus = document.getElementById('filtro-status') ? document.getElementById('filtro-status').value : 'todos';
+    
+    // Novos campos avançados
+    const buscaTexto = document.getElementById('filtro-busca') ? document.getElementById('filtro-busca').value.toLowerCase().trim() : '';
+    const inputMin = document.getElementById('filtro-valor-min') ? document.getElementById('filtro-valor-min').value : '';
+    const inputMax = document.getElementById('filtro-valor-max') ? document.getElementById('filtro-valor-max').value : '';
+    const valorMin = inputMin !== "" ? parseFloat(inputMin) : 0;
+    const valorMax = inputMax !== "" ? parseFloat(inputMax) : Infinity;
+    const operadorSelecionado = document.getElementById('filtro-operador') ? document.getElementById('filtro-operador').value : 'todos';
+
+    // 2. APLICANDO A PENEIRA EM CADA TRANSAÇÃO
+    transacoes.forEach((transacao) => {
+        const valorSeguro = parseFloat(transacao.valor) || 0;
+        
+        let passaTipo = (filtroTipo === 'todos' || transacao.tipo === filtroTipo);
+        let passaCategoria = (filtroCategoria === 'todas' || transacao.categoria === filtroCategoria);
+        
         let passaData = true;
+        if (filtroDataInicio && transacao.data < filtroDataInicio) passaData = false;
+        if (filtroDataFim && transacao.data > filtroDataFim) passaData = false;
 
-        if (filtroDataInicio.value && transacao.data < filtroDataInicio.value) passaData = false;
-        if (filtroDataFim.value && transacao.data > filtroDataFim.value) passaData = false;
+        const descricaoNormalizada = (transacao.descricao || "").toLowerCase();
+        const categoriaNormalizada = (transacao.categoria || "").toLowerCase();
+        const passaBusca = descricaoNormalizada.includes(buscaTexto) || categoriaNormalizada.includes(buscaTexto);
+        
+        const passaValor = valorSeguro >= valorMin && valorSeguro <= valorMax;
+        const passaOperador = (operadorSelecionado === 'todos' || transacao.nomeUsuario === operadorSelecionado);
 
-        if (passaTipo && passaData && passaCategoria) {
+        const statusDaTransacao = transacao.status || 'pago'; 
+        const passaStatus = (filtroStatus === 'todos' || statusDaTransacao === filtroStatus);
+
+        // SE PASSAR EM TODOS OS TESTES, ENTRA NA TABELA:
+        if (passaTipo && passaCategoria && passaData && passaBusca && passaValor && passaOperador && passaStatus) {
             transacoesFiltradas.push(transacao);
 
-            // ESCUDO DE PROTEÇÃO: Se o valor vier quebrado da nuvem, vira 0
-            let valorSeguro = parseFloat(transacao.valor) || 0;
+            // Matemática: Se estiver CANCELADO, vira R$ 0,00 nos cálculos
+            const valorParaCalculo = statusDaTransacao === 'cancelado' ? 0 : valorSeguro;
 
-            if(transacao.tipo === 'receita') totalReceitas += valorSeguro;
-            else totalDespesas += valorSeguro;
+            if(transacao.tipo === 'receita') totalReceitas += valorParaCalculo;
+            else totalDespesas += valorParaCalculo;
 
+            // VISUAL DO STATUS (Etiquetas coloridas)
+            let corStatusBg = '';
+            let corStatusTxt = '';
+            let textoStatus = '';
+            let iconeStatus = '';
+            let estiloLinha = '';
+
+            if (statusDaTransacao === 'pendente') {
+                corStatusBg = 'rgba(243, 156, 18, 0.15)';
+                corStatusTxt = '#d35400';
+                textoStatus = 'Pendente';
+                iconeStatus = '<i class="fa-solid fa-clock"></i>';
+                estiloLinha = 'opacity: 0.9;'; 
+            } else if (statusDaTransacao === 'cancelado') {
+                corStatusBg = 'rgba(200, 214, 229, 0.3)';
+                corStatusTxt = '#8395a7';
+                textoStatus = 'Cancelado';
+                iconeStatus = '<i class="fa-solid fa-ban"></i>';
+                estiloLinha = 'text-decoration: line-through; opacity: 0.6;'; 
+            } else {
+                corStatusBg = 'rgba(0, 184, 148, 0.15)';
+                corStatusTxt = '#00b894';
+                textoStatus = 'Pago';
+                iconeStatus = '<i class="fa-solid fa-check-circle"></i>';
+            }
+
+            // Variáveis visuais da linha
             let dataFormatada = transacao.data ? transacao.data.split('-').reverse().join('/') : 'Sem Data';
-            let catVisual = transacao.categoria ? transacao.categoria : 'Geral'; 
-            
+            let catVisual = transacao.categoria || 'Geral'; 
             let corDaTag = coresCategorias[catVisual] || '#b2bec3';
             let corDoTextoIdeal = getCorTextoIdeal(corDaTag);
 
+            // Cria a linha (tr) - AGORA COM AS 7 COLUNAS EXATAS
             const tr = document.createElement('tr');
             tr.id = `linha-${transacao.id}`; 
+            tr.style = estiloLinha; 
             
             tr.innerHTML = `
                 <td data-label="Data">${dataFormatada}</td>
-                <td data-label="Descrição" style="font-weight: 500;">${transacao.descricao}</td>
+                
+                <td data-label="Descrição" style="font-weight: 500; color: ${statusDaTransacao === 'cancelado' ? '#8395a7' : 'inherit'};">${transacao.descricao}</td>
+                
+                <td data-label="Status">
+                    <span style="background: ${corStatusBg}; color: ${corStatusTxt}; padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
+                        ${iconeStatus} ${textoStatus}
+                    </span>
+                </td>
+
                 <td data-label="Categoria">
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
-                        <span style="background: ${corDaTag}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corDoTextoIdeal}; font-weight: 700; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: 0.5px;">
+                        <span style="background: ${corDaTag}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corDoTextoIdeal}; font-weight: 700; white-space: nowrap;">
                             ${catVisual}
                         </span>
                         ${(auth.currentUser && auth.currentUser.uid === ADMIN_UID && transacao.nomeUsuario) ? 
-                          `<span style="background: var(--fundo); border: 1px solid #dfe6e9; padding: 4px 8px; border-radius: 6px; font-size: 10px; color: var(--texto); white-space: nowrap; opacity: 0.85;">
+                          `<span style="background: var(--fundo); border: 1px solid #dfe6e9; padding: 4px 8px; border-radius: 6px; font-size: 10px; color: var(--texto); white-space: nowrap; opacity: 0.85;" title="Lançado por ${transacao.nomeUsuario}">
                               <i class="fa-solid fa-user-pen" style="margin-right: 4px;"></i>${transacao.nomeUsuario}
-                          </span>` 
-                          : ''}
+                          </span>` : ''}
                     </div>
                 </td>
+                
                 <td data-label="Tipo" style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600; font-size: 12px;">${transacao.tipo.toUpperCase()}</td>
+                
                 <td data-label="Valor" style="font-weight: 700;">R$ ${valorSeguro.toFixed(2)}</td>
+                
                 <td data-label="Ações">
                     <div style="display: flex; gap: 15px;">
                         <button class="btn-editar" onclick="prepararEdicao('${transacao.id}')" title="Editar" style="background:transparent; border:none; color:#0984e3; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
@@ -336,15 +404,19 @@ transacoes.forEach((transacao, index) => {
         }
     });
 
-    displayReceita.innerText = `R$ ${totalReceitas.toFixed(2)}`;
-    displayDespesa.innerText = `R$ ${totalDespesas.toFixed(2)}`;
-    const lucro = totalReceitas - totalDespesas;
-    displayLucro.innerText = `R$ ${lucro.toFixed(2)}`;
-    displayLucro.style.color = lucro >= 0 ? 'var(--texto)' : 'var(--cor-alerta)';
+    // 3. ATUALIZA DISPLAYS E GRÁFICOS COM OS DADOS FILTRADOS
+    if (displayReceita) displayReceita.innerText = `R$ ${totalReceitas.toFixed(2)}`;
+    if (displayDespesa) displayDespesa.innerText = `R$ ${totalDespesas.toFixed(2)}`;
+    
+    if (displayLucro) {
+        const lucro = totalReceitas - totalDespesas;
+        displayLucro.innerText = `R$ ${lucro.toFixed(2)}`;
+        displayLucro.style.color = lucro >= 0 ? 'var(--texto)' : 'var(--cor-alerta)';
+    }
 
-    atualizarProgressoMeta(totalReceitas);
-    atualizarGrafico(totalReceitas, totalDespesas);
-    atualizarGraficoBarras(transacoesFiltradas);
+    if (typeof atualizarProgressoMeta === "function") atualizarProgressoMeta(totalReceitas);
+    if (typeof atualizarGrafico === "function") atualizarGrafico(totalReceitas, totalDespesas);
+    if (typeof atualizarGraficoBarras === "function") atualizarGraficoBarras(transacoesFiltradas);
 }
 
 // --- 13. SISTEMA DE AUTENTICAÇÃO (LOGIN / LOGOUT) ---
@@ -393,6 +465,14 @@ onAuthStateChanged(auth, async (user) => {
             areaAdmin.style.display = 'none';
         }
 
+        if (user.uid === ADMIN_UID) {
+            const containerOperador = document.getElementById('container-filtro-operador');
+            if (containerOperador) containerOperador.style.display = 'block';
+            
+            // Opcional: Aqui você pode fazer um loop nas transações para preencher 
+            // o select 'filtro-operador' com os nomes únicos que existem no banco.
+        }
+
         // 2. LÓGICA DO BANCO (MESTRE VS OPERADOR)
         let consultaBanco;
         if (user.uid === ADMIN_UID) {
@@ -402,11 +482,42 @@ onAuthStateChanged(auth, async (user) => {
         }
 
         if (unsubscribeSnapshot) unsubscribeSnapshot(); 
+        
         unsubscribeSnapshot = onSnapshot(consultaBanco, (snapshot) => {
             transacoes = []; 
+            const nomesUnicos = new Set(); // Cria uma lista sem repetições
+            
             snapshot.forEach((documento) => {
-                transacoes.push({ id: documento.id, ...documento.data() }); 
+                const dados = documento.data();
+                transacoes.push({ id: documento.id, ...dados }); 
+                
+                // Salva o nome de quem lançou para o filtro
+                if (dados.nomeUsuario) {
+                    nomesUnicos.add(dados.nomeUsuario);
+                }
             });
+            
+            // Lógica para popular o menu de operadores (Só para o Mestre)
+            const containerOperador = document.getElementById('container-filtro-operador');
+            const selectOperador = document.getElementById('filtro-operador');
+            
+            if (user.uid === ADMIN_UID) {
+                if (containerOperador) containerOperador.style.display = 'block';
+                
+                if (selectOperador) {
+                    const valorAntigo = selectOperador.value; // Guarda a seleção atual
+                    selectOperador.innerHTML = '<option value="todos">Todos os Operadores</option>';
+                    
+                    nomesUnicos.forEach(nome => {
+                        selectOperador.innerHTML += `<option value="${nome}">${nome}</option>`;
+                    });
+                    
+                    selectOperador.value = valorAntigo || "todos"; // Devolve a seleção
+                }
+            } else {
+                if (containerOperador) containerOperador.style.display = 'none';
+            }
+
             atualizarTela(); 
         });
 
@@ -676,6 +787,12 @@ function prepararEdicao(id) {
     document.querySelector('.form-container').classList.add('modo-edicao');
     
     document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    if (t.comprovante) {
+        mostrarPreviewComprovante(t.comprovante);
+    } else {
+        removerAnexo();
+    }
 }
 
 // Memória temporária para guardar a última categoria e data de inclusão
@@ -686,17 +803,20 @@ let ultimaDataAdicionada = getDataHoje(); // NOVO: Inicia com a data de hoje
 form.addEventListener('submit', async function(evento) {
     evento.preventDefault(); 
 
-    const dados = {
+const dados = {
         descricao: document.getElementById('descricao').value,
         valor: parseFloat(document.getElementById('valor').value),
         tipo: document.getElementById('tipo').value,
         data: document.getElementById('data').value || getDataHoje(),
         categoria: document.getElementById('categoria').value,
-        userId: auth.currentUser.uid, // CARIMBO: Registra quem criou este dado
-        nomeUsuario: auth.currentUser.displayName || "Operador" // NOVO: Carimba o nome do autor!
+        userId: auth.currentUser.uid, 
+        nomeUsuario: auth.currentUser.displayName || "Operador",
+        status: document.getElementById('status-lancamento').value,
+        comprovante: document.getElementById('url-comprovante').value // <-- NOVA LINHA (Grava o link da foto)
     };
 
     let indexParaRolar = null; 
+    let foiEdicao = (idEdicao !== null); // NOVO: O código memoriza se era edição ANTES de limpar a variável
 
     try {
         if (idEdicao !== null) {
@@ -723,20 +843,24 @@ form.addEventListener('submit', async function(evento) {
         // O onSnapshot lá em cima vai perceber a mudança e atualizar a tela sozinho.
 
         form.reset();
+        removerAnexo();
         document.getElementById('data').value = ultimaDataAdicionada;
         document.getElementById('categoria').value = ultimaCategoriaAdicionada;
         atualizarCorDaCaixaDeSelecao();
 
-        // Efeito de Rolagem e Destaque
+// Efeito de Rolagem e Destaque
         setTimeout(() => { 
             const linhaAtualizada = document.getElementById(`linha-${indexParaRolar}`);
             if (linhaAtualizada) {
-                linhaAtualizada.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // NOVO: Só rola a tela para baixo se foi uma EDIÇÃO
+                if (foiEdicao) {
+                    linhaAtualizada.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
                 linhaAtualizada.style.transition = "background-color 0.8s";
                 linhaAtualizada.style.backgroundColor = "rgba(9, 132, 227, 0.2)";
                 setTimeout(() => { linhaAtualizada.style.backgroundColor = ""; }, 1000);
             }
-        }, 500); // Damos 500ms para a nuvem responder e a tabela ser desenhada
+        }, 500);
 
     } catch (erro) {
         console.error("Erro ao comunicar com o Firebase:", erro);
@@ -829,9 +953,98 @@ function exportarExcel() {
     document.body.removeChild(link);
 }
 
-// --- 12. EXPORTANDO TODAS AS FUNÇÕES PARA O HTML (Requisito do type="module") ---
-window.toggleTheme = toggleTheme;
-window.abrirModal = abrirModal;
+// --- 14. SISTEMA DE ANEXOS E QR CODE HÍBRIDO ---
+let ouvinteUpload = null;
+let qrCodeApp = null;
+
+function mostrarPreviewComprovante(url) {
+    document.getElementById('url-comprovante').value = url;
+    document.getElementById('img-preview').src = url;
+    document.getElementById('preview-comprovante').style.display = 'block';
+    document.getElementById('botoes-upload').style.display = 'none';
+}
+
+function removerAnexo() {
+    document.getElementById('url-comprovante').value = '';
+    document.getElementById('img-preview').src = '';
+    document.getElementById('preview-comprovante').style.display = 'none';
+    document.getElementById('botoes-upload').style.display = 'flex';
+    document.getElementById('arquivo-upload').value = '';
+}
+
+// Upload Tradicional (Pelo Arquivo do PC)
+async function uploadTradicional(event) {
+    const arquivo = event.target.files[0];
+    if (!arquivo) return;
+
+    const status = document.getElementById('upload-status');
+    status.style.display = 'block';
+    status.innerText = 'Enviando imagem...';
+
+    try {
+        const nomeArquivo = `comprovantes/${Date.now()}_${arquivo.name}`;
+        const referenciaStorage = ref(storage, nomeArquivo);
+        await uploadBytesResumable(referenciaStorage, arquivo);
+        const url = await getDownloadURL(referenciaStorage);
+        
+        mostrarPreviewComprovante(url);
+        status.style.display = 'none';
+    } catch (erro) {
+        console.error("Erro no upload:", erro);
+        status.innerText = 'Erro ao enviar.';
+        status.style.color = 'red';
+    }
+}
+
+// Upload Mágico (Pelo Celular via QR Code)
+function abrirModalQR() {
+    document.getElementById('modal-qrcode').style.display = 'flex';
+    const container = document.getElementById('qrcode-container');
+    container.innerHTML = ''; // Limpa QR antigo
+
+    // 1. Cria um ID único para essa sessão
+    const sessaoId = 'qr_' + Date.now();
+    
+    // 2. Monta o link que o celular vai abrir (apontando para o scanner.html)
+    let urlBase = window.location.href.split('index.html')[0];
+    if (!urlBase.endsWith('/')) urlBase += '/';
+    const linkCelular = `${urlBase}scanner.html?id=${sessaoId}`;
+
+    // 3. Desenha o QR Code na tela
+    qrCodeApp = new QRCode(container, {
+        text: linkCelular,
+        width: 200, height: 200,
+        colorDark : "#2d3436", colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+    });
+
+    document.getElementById('status-qr').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguardando celular...';
+
+    // 4. O Computador fica "escutando" a sala de espera no banco de dados
+    const docRef = doc(db, "temp_uploads", sessaoId);
+    if(ouvinteUpload) ouvinteUpload(); // Cancela o anterior se existir
+
+    ouvinteUpload = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const dados = docSnap.data();
+            if (dados.url) {
+                // O CELULAR MANDOU A FOTO! 🎉
+                fecharModalQR();
+                mostrarPreviewComprovante(dados.url);
+                deleteDoc(docRef); // Limpa o banco de dados
+            }
+        }
+    });
+}
+
+function fecharModalQR() {
+    document.getElementById('modal-qrcode').style.display = 'none';
+    if(ouvinteUpload) {
+        ouvinteUpload(); // O PC para de escutar se você fechar a janela
+        ouvinteUpload = null;
+    }
+}
+
 // Caso você tenha as funções de fechar e salvar a categoria direto no HTML, já garantimos elas aqui:
 if (typeof fecharModal !== 'undefined') window.fecharModal = fecharModal;
 if (typeof salvarCategoria !== 'undefined') window.salvarCategoria = salvarCategoria;
@@ -851,6 +1064,11 @@ window.importarDados = importarDados;
 window.gerarPDF = gerarPDF;
 window.fazerLogout = fazerLogout;
 window.mudarNome = mudarNome;
+window.atualizarTela = atualizarTela;
+window.abrirModalQR = abrirModalQR;
+window.fecharModalQR = fecharModalQR;
+window.uploadTradicional = uploadTradicional;
+window.removerAnexo = removerAnexo;
 
 // --- 9. INICIA O SISTEMA ---
 atualizarListasDeCategorias();

@@ -66,7 +66,9 @@ body.dark-theme th { color: #f1f2f6; }
 body.dark-theme #form-transacao input, 
 body.dark-theme #form-transacao select,
 body.dark-theme .filtro-area select, 
-body.dark-theme .filtro-area input {
+body.dark-theme .filtro-area input,
+body.dark-theme #status-lancamento option,
+body.dark-theme #tipo option {
     background-color: #2f3640;
     color: #f1f2f6;
     border-color: #353b48;
