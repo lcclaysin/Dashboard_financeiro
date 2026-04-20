@@ -32,8 +32,8 @@ let transacoes = [];
 // O detetive blindado: Se a URL NÃO contém "github.io", é o seu VS Code.
 const rodandoNoComputador = !window.location.hostname.includes("github.io");
 
-//const nomeDaColecao = rodandoNoComputador ? "transacoes_teste" : "transacoes";
-const nomeDaColecao = "transacoes_teste";
+const nomeDaColecao = rodandoNoComputador ? "transacoes_teste" : "transacoes";
+//const nomeDaColecao = "transacoes_teste";
 const transacoesRef = collection(db, nomeDaColecao);
 
 if (rodandoNoComputador) {
