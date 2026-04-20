@@ -31,6 +31,7 @@ let transacoes = [];
 
 // O detetive blindado: Se a URL NÃO contém "github.io", é o seu VS Code.
 const rodandoNoComputador = !window.location.hostname.includes("github.io");
+
 //const nomeDaColecao = rodandoNoComputador ? "transacoes_teste" : "transacoes";
 const nomeDaColecao = "transacoes_teste";
 const transacoesRef = collection(db, nomeDaColecao);
@@ -102,8 +103,8 @@ function getDataHoje() {
 
 document.getElementById('data').value = getDataHoje();
 
-filtroTipo.addEventListener('change', );
-filtroCategoria.addEventListener('change', );
+filtroTipo.addEventListener('change', atualizarTela);
+filtroCategoria.addEventListener('change', atualizarTela);
 filtroDataInicio.addEventListener('change', atualizarTela);
 filtroDataFim.addEventListener('change', atualizarTela);
 
@@ -361,13 +362,16 @@ function atualizarTela() {
             let corDaTag = coresCategorias[catVisual] || '#b2bec3';
             let corDoTextoIdeal = getCorTextoIdeal(corDaTag);
 
-            // NOVO: Verifica se existe comprovante e cria o botãozinho de anexo
+
+            // Debug técnico: veja se o link está chegando do banco
+            console.log(`Transação ${transacao.descricao}:`, transacao.comprovante);
+
             let htmlAnexo = '';
-            if (transacao.comprovante) {
+            if (transacao.comprovante && transacao.comprovante !== "") {
                 htmlAnexo = `
-                    <div style="margin-top: 6px;">
-                        <a href="${transacao.comprovante}" target="_blank" style="display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: #0984e3; background: rgba(9, 132, 227, 0.1); padding: 4px 8px; border-radius: 6px; text-decoration: none; font-weight: 600; transition: 0.2s;" onmouseover="this.style.background='rgba(9, 132, 227, 0.2)'" onmouseout="this.style.background='rgba(9, 132, 227, 0.1)'">
-                            <i class="fa-solid fa-paperclip"></i> Ver Anexo
+                    <div style="margin-top: 8px;">
+                        <a href="${transacao.comprovante}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #0984e3; background: rgba(9, 132, 227, 0.1); padding: 5px 10px; border-radius: 6px; text-decoration: none; font-weight: 700; border: 1px solid rgba(9, 132, 227, 0.2);">
+                            <i class="fa-solid fa-paperclip"></i> Ver Comprovante
                         </a>
                     </div>
                 `;
@@ -378,12 +382,13 @@ function atualizarTela() {
             tr.id = `linha-${transacao.id}`; 
             tr.style = estiloLinha; 
             
+            // No innerHTML, certifique-se de que a variável htmlAnexo está aqui:
             tr.innerHTML = `
                 <td data-label="Data">${dataFormatada}</td>
-                
-                <td data-label="Descrição" style="font-weight: 500; color: ${statusDaTransacao === 'cancelado' ? '#8395a7' : 'inherit'};">
+                <td data-label="Descrição" style="font-weight: 500;">
                     ${transacao.descricao}
-                    ${htmlAnexo} </td>
+                    ${htmlAnexo}
+                </td>
                 
                 <td data-label="Status">
                     <span style="background: ${corStatusBg}; color: ${corStatusTxt}; padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">

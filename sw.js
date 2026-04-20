@@ -1,4 +1,4 @@
-const cacheName = 'dashboard-financeiro-v2';
+const cacheName = 'dashboard-financeiro-v1';
 const arquivosParaCache = [
   './',
   './index.html',
