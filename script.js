@@ -102,8 +102,8 @@ function getDataHoje() {
 
 document.getElementById('data').value = getDataHoje();
 
-filtroTipo.addEventListener('change', atualizarTela);
-filtroCategoria.addEventListener('change', atualizarTela);
+filtroTipo.addEventListener('change', );
+filtroCategoria.addEventListener('change', );
 filtroDataInicio.addEventListener('change', atualizarTela);
 filtroDataFim.addEventListener('change', atualizarTela);
 
@@ -361,7 +361,19 @@ function atualizarTela() {
             let corDaTag = coresCategorias[catVisual] || '#b2bec3';
             let corDoTextoIdeal = getCorTextoIdeal(corDaTag);
 
-            // Cria a linha (tr) - AGORA COM AS 7 COLUNAS EXATAS
+            // NOVO: Verifica se existe comprovante e cria o botãozinho de anexo
+            let htmlAnexo = '';
+            if (transacao.comprovante) {
+                htmlAnexo = `
+                    <div style="margin-top: 6px;">
+                        <a href="${transacao.comprovante}" target="_blank" style="display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: #0984e3; background: rgba(9, 132, 227, 0.1); padding: 4px 8px; border-radius: 6px; text-decoration: none; font-weight: 600; transition: 0.2s;" onmouseover="this.style.background='rgba(9, 132, 227, 0.2)'" onmouseout="this.style.background='rgba(9, 132, 227, 0.1)'">
+                            <i class="fa-solid fa-paperclip"></i> Ver Anexo
+                        </a>
+                    </div>
+                `;
+            }
+
+            // Cria a linha (tr)
             const tr = document.createElement('tr');
             tr.id = `linha-${transacao.id}`; 
             tr.style = estiloLinha; 
@@ -369,7 +381,9 @@ function atualizarTela() {
             tr.innerHTML = `
                 <td data-label="Data">${dataFormatada}</td>
                 
-                <td data-label="Descrição" style="font-weight: 500; color: ${statusDaTransacao === 'cancelado' ? '#8395a7' : 'inherit'};">${transacao.descricao}</td>
+                <td data-label="Descrição" style="font-weight: 500; color: ${statusDaTransacao === 'cancelado' ? '#8395a7' : 'inherit'};">
+                    ${transacao.descricao}
+                    ${htmlAnexo} </td>
                 
                 <td data-label="Status">
                     <span style="background: ${corStatusBg}; color: ${corStatusTxt}; padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
