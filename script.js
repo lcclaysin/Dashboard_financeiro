@@ -27,21 +27,19 @@ const auth = getAuth(app);
 let categorias = JSON.parse(localStorage.getItem('categoriasDashboard')) || [];
 let coresCategorias = JSON.parse(localStorage.getItem('coresDashboardCores')) || { 'Geral': '#b2bec3' };
 
-let transacoes = []; // Começa vazio, a nuvem vai preencher
 // --- 1. PREPARAÇÃO DO BANCO DE DADOS (DEV vs PROD) ---
 let transacoes = []; 
 
-// O código verifica o endereço do navegador. Se for localhost ou 127.0.0.1, ele sabe que é o VS Code.
-const rodandoNoComputador = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+// O detetive blindado: Se a URL NÃO contém "github.io", é o seu VS Code.
+const rodandoNoComputador = !window.location.hostname.includes("github.io");
 
-// Define o nome do cofre com base no ambiente
 const nomeDaColecao = rodandoNoComputador ? "transacoes_teste" : "transacoes";
 const transacoesRef = collection(db, nomeDaColecao);
 
 if (rodandoNoComputador) {
-    console.warn("⚠️ MODO DESENVOLVEDOR ATIVADO: Usando o banco de dados de TESTE.");
+    console.warn("🛠️ MODO DESENVOLVIMENTO: Gravando na pasta 'transacoes_teste'");
 } else {
-    console.log("✅ MODO PRODUÇÃO: Conectado ao banco oficial.");
+    console.log("🚀 MODO PRODUÇÃO: Conectado ao banco oficial!");
 }
 
 // --- 2. MÁGICA DO TEMPO REAL (Ouvinte) ---
@@ -651,7 +649,7 @@ let idEdicao = null;
 async function removerTransacao(id) {
     if (confirm("Deseja realmente excluir este lançamento? Esta ação não pode ser desfeita.")) {
         // Manda o Firebase apagar o documento com este ID
-        await deleteDoc(doc(db, "transacoes", id));
+        await deleteDoc(doc(db, nomeDaColecao, id));
         // O onSnapshot deteta a exclusão e limpa a linha da tabela automaticamente!
     }
 }
@@ -703,7 +701,7 @@ form.addEventListener('submit', async function(evento) {
     try {
         if (idEdicao !== null) {
             // MODO EDIÇÃO: Atualiza o documento específico na nuvem
-            const documentoRef = doc(db, "transacoes", idEdicao);
+            const documentoRef = doc(db, nomeDaColecao, idEdicao);
             await updateDoc(documentoRef, dados);
             
             indexParaRolar = idEdicao; 
