@@ -838,6 +838,9 @@ function prepararEdicao(id) {
 // Memória temporária para guardar a última categoria e data de inclusão
 let ultimaCategoriaAdicionada = 'Geral';
 let ultimaDataAdicionada = getDataHoje(); // NOVO: Inicia com a data de hoje
+// Memória do formulário contínuo
+let ultimoTipoAdicionado = 'despesa'; 
+let ultimoStatusAdicionado = 'pago';
 
 // --- LÓGICA DE SALVAR / EDITAR NA NUVEM ---
 form.addEventListener('submit', async function(evento) {
@@ -853,7 +856,6 @@ const dados = {
         nomeUsuario: auth.currentUser.displayName || "Operador",
         status: document.getElementById('status-lancamento').value,
         comprovante: document.getElementById('url-comprovante').value, // <-- NOVA LINHA (Grava o link da foto)
-        timestamp: Date.now() // <-- NOVA LINHA: Salva o milissegundo exato em que o botão foi clicado
     };
 
     let indexParaRolar = null; 
@@ -874,10 +876,16 @@ const dados = {
             document.querySelector('.form-container').classList.remove('modo-edicao');
         } else {
             // MODO NOVO: Cria um documento novo na nuvem
+            dados.timestamp = Date.now();
             const novoDoc = await addDoc(transacoesRef, dados);
-            indexParaRolar = novoDoc.id; // Guarda o ID gerado para rolar a página depois
+            
+            indexParaRolar = novoDoc.id; 
             ultimaCategoriaAdicionada = dados.categoria; 
             ultimaDataAdicionada = dados.data; 
+            
+            // === ADICIONE ESTAS DUAS LINHAS ===
+            ultimoTipoAdicionado = dados.tipo;
+            ultimoStatusAdicionado = dados.status;
         }
 
         // ATENÇÃO: Repare que já não usamos localStorage aqui! 
@@ -889,7 +897,21 @@ const dados = {
         document.getElementById('categoria').value = ultimaCategoriaAdicionada;
         atualizarCorDaCaixaDeSelecao();
 
-// Efeito de Rolagem e Destaque
+        // === ADICIONE ESTE BLOCO AQUI ===
+        if (typeof ultimoTipoAdicionado !== 'undefined') {
+            document.getElementById('tipo').value = ultimoTipoAdicionado;
+        }
+        if (typeof ultimoStatusAdicionado !== 'undefined') {
+            document.getElementById('status-lancamento').value = ultimoStatusAdicionado;
+        }
+        // ================================
+
+        // A MÁGICA DA DIGITAÇÃO CONTÍNUA (Que fizemos antes)
+        if (!foiEdicao) {
+            document.getElementById('descricao').focus();
+        }
+
+        // Efeito de Rolagem e Destaque
         setTimeout(() => { 
             const linhaAtualizada = document.getElementById(`linha-${indexParaRolar}`);
             if (linhaAtualizada) {
