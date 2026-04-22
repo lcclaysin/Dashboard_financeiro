@@ -285,13 +285,12 @@ function atualizarTela() {
     let transacoesFiltradas = [];
 
     // 1. CAPTURANDO TODOS OS VALORES DOS FILTROS
-    const filtroTipo = document.getElementById('filtro-tipo').value;
-    const filtroCategoria = document.getElementById('filtro-categoria').value;
-    const filtroDataInicio = document.getElementById('filtro-data-inicio').value;
-    const filtroDataFim = document.getElementById('filtro-data-fim').value;
+    const filtroTipo = document.getElementById('filtro-tipo') ? document.getElementById('filtro-tipo').value : 'todos';
+    const filtroCategoria = document.getElementById('filtro-categoria') ? document.getElementById('filtro-categoria').value : 'todas';
+    const filtroDataInicio = document.getElementById('filtro-data-inicio') ? document.getElementById('filtro-data-inicio').value : '';
+    const filtroDataFim = document.getElementById('filtro-data-fim') ? document.getElementById('filtro-data-fim').value : '';
     const filtroStatus = document.getElementById('filtro-status') ? document.getElementById('filtro-status').value : 'todos';
     
-    // Novos campos avançados
     const buscaTexto = document.getElementById('filtro-busca') ? document.getElementById('filtro-busca').value.toLowerCase().trim() : '';
     const inputMin = document.getElementById('filtro-valor-min') ? document.getElementById('filtro-valor-min').value : '';
     const inputMax = document.getElementById('filtro-valor-max') ? document.getElementById('filtro-valor-max').value : '';
@@ -299,7 +298,7 @@ function atualizarTela() {
     const valorMax = inputMax !== "" ? parseFloat(inputMax) : Infinity;
     const operadorSelecionado = document.getElementById('filtro-operador') ? document.getElementById('filtro-operador').value : 'todos';
 
-    // 2. APLICANDO A PENEIRA EM CADA TRANSAÇÃO
+    // 2. FILTRAGEM
     transacoes.forEach((transacao) => {
         const valorSeguro = parseFloat(transacao.valor) || 0;
         
@@ -320,119 +319,92 @@ function atualizarTela() {
         const statusDaTransacao = transacao.status || 'pago'; 
         const passaStatus = (filtroStatus === 'todos' || statusDaTransacao === filtroStatus);
 
-        // SE PASSAR EM TODOS OS TESTES, ENTRA NA TABELA:
         if (passaTipo && passaCategoria && passaData && passaBusca && passaValor && passaOperador && passaStatus) {
             transacoesFiltradas.push(transacao);
-
-            // Matemática: Se estiver CANCELADO, vira R$ 0,00 nos cálculos
-            const valorParaCalculo = statusDaTransacao === 'cancelado' ? 0 : valorSeguro;
-
-            if(transacao.tipo === 'receita') totalReceitas += valorParaCalculo;
-            else totalDespesas += valorParaCalculo;
-
-            // VISUAL DO STATUS (Etiquetas coloridas)
-            let corStatusBg = '';
-            let corStatusTxt = '';
-            let textoStatus = '';
-            let iconeStatus = '';
-            let estiloLinha = '';
-
-            if (statusDaTransacao === 'pendente') {
-                corStatusBg = 'rgba(243, 156, 18, 0.15)';
-                corStatusTxt = '#d35400';
-                textoStatus = 'Pendente';
-                iconeStatus = '<i class="fa-solid fa-clock"></i>';
-                estiloLinha = 'opacity: 0.9;'; 
-            } else if (statusDaTransacao === 'cancelado') {
-                corStatusBg = 'rgba(200, 214, 229, 0.3)';
-                corStatusTxt = '#8395a7';
-                textoStatus = 'Cancelado';
-                iconeStatus = '<i class="fa-solid fa-ban"></i>';
-                estiloLinha = 'text-decoration: line-through; opacity: 0.6;'; 
-            } else {
-                corStatusBg = 'rgba(0, 184, 148, 0.15)';
-                corStatusTxt = '#00b894';
-                textoStatus = 'Pago';
-                iconeStatus = '<i class="fa-solid fa-check-circle"></i>';
-            }
-
-            // Variáveis visuais da linha
-            let dataFormatada = transacao.data ? transacao.data.split('-').reverse().join('/') : 'Sem Data';
-            let catVisual = transacao.categoria || 'Geral'; 
-            let corDaTag = coresCategorias[catVisual] || '#b2bec3';
-            let corDoTextoIdeal = getCorTextoIdeal(corDaTag);
-
-
-            // Debug técnico: veja se o link está chegando do banco
-            console.log(`Transação ${transacao.descricao}:`, transacao.comprovante);
-
-            let htmlAnexo = '';
-            if (transacao.comprovante && transacao.comprovante !== "") {
-                htmlAnexo = `
-                    <div style="margin-top: 8px;">
-                        <a href="${transacao.comprovante}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #0984e3; background: rgba(9, 132, 227, 0.1); padding: 5px 10px; border-radius: 6px; text-decoration: none; font-weight: 700; border: 1px solid rgba(9, 132, 227, 0.2);">
-                            <i class="fa-solid fa-paperclip"></i> Ver Comprovante
-                        </a>
-                    </div>
-                `;
-            }
-
-            // Cria a linha (tr)
-            const tr = document.createElement('tr');
-            tr.id = `linha-${transacao.id}`; 
-            tr.style = estiloLinha; 
-            
-            // No innerHTML, certifique-se de que a variável htmlAnexo está aqui:
-            tr.innerHTML = `
-                <td data-label="Data">${dataFormatada}</td>
-                <td data-label="Descrição" style="font-weight: 500;">
-                    ${transacao.descricao}
-                    ${htmlAnexo}
-                </td>
-                
-                <td data-label="Status">
-                    <span style="background: ${corStatusBg}; color: ${corStatusTxt}; padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
-                        ${iconeStatus} ${textoStatus}
-                    </span>
-                </td>
-
-                <td data-label="Categoria">
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
-                        <span style="background: ${corDaTag}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corDoTextoIdeal}; font-weight: 700; white-space: nowrap;">
-                            ${catVisual}
-                        </span>
-                        ${(auth.currentUser && auth.currentUser.uid === ADMIN_UID && transacao.nomeUsuario) ? 
-                          `<span style="background: var(--fundo); border: 1px solid #dfe6e9; padding: 4px 8px; border-radius: 6px; font-size: 10px; color: var(--texto); white-space: nowrap; opacity: 0.85;" title="Lançado por ${transacao.nomeUsuario}">
-                              <i class="fa-solid fa-user-pen" style="margin-right: 4px;"></i>${transacao.nomeUsuario}
-                          </span>` : ''}
-                    </div>
-                </td>
-                
-                <td data-label="Tipo" style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600; font-size: 12px;">${transacao.tipo.toUpperCase()}</td>
-                
-                <td data-label="Valor" style="font-weight: 700;">R$ ${valorSeguro.toFixed(2)}</td>
-                
-                <td data-label="Ações">
-                    <div style="display: flex; gap: 15px;">
-                        <button class="btn-editar" onclick="prepararEdicao('${transacao.id}')" title="Editar" style="background:transparent; border:none; color:#0984e3; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
-                        <button class="btn-excluir" onclick="removerTransacao('${transacao.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </td>
-            `;
-            corpoTabela.appendChild(tr);
         }
     });
 
-    // 3. ATUALIZA DISPLAYS E GRÁFICOS COM OS DADOS FILTRADOS
+    // =====================================================================
+    // ⭐ ORDENAÇÃO: Mais recentes no topo (Ordem Decrescente)
+    // =====================================================================
+    transacoesFiltradas.sort((a, b) => {
+        if (b.data > a.data) return 1;
+        if (b.data < a.data) return -1;
+        return 0; 
+    });
+
+    // 3. RENDERIZAÇÃO DA TABELA
+    transacoesFiltradas.forEach((transacao) => {
+        const valorSeguro = parseFloat(transacao.valor) || 0;
+        const statusDaTransacao = transacao.status || 'pago';
+        const valorParaCalculo = statusDaTransacao === 'cancelado' ? 0 : valorSeguro;
+
+        if(transacao.tipo === 'receita') totalReceitas += valorParaCalculo;
+        else totalDespesas += valorParaCalculo;
+
+        let corStatusBg = '', corStatusTxt = '', textoStatus = '', iconeStatus = '', estiloLinha = '';
+        if (statusDaTransacao === 'pendente') {
+            corStatusBg = 'rgba(243, 156, 18, 0.15)'; corStatusTxt = '#d35400'; textoStatus = 'Pendente'; iconeStatus = '<i class="fa-solid fa-clock"></i>'; estiloLinha = 'opacity: 0.9;'; 
+        } else if (statusDaTransacao === 'cancelado') {
+            corStatusBg = 'rgba(200, 214, 229, 0.3)'; corStatusTxt = '#8395a7'; textoStatus = 'Cancelado'; iconeStatus = '<i class="fa-solid fa-ban"></i>'; estiloLinha = 'text-decoration: line-through; opacity: 0.6;'; 
+        } else {
+            corStatusBg = 'rgba(0, 184, 148, 0.15)'; corStatusTxt = '#00b894'; textoStatus = 'Pago'; iconeStatus = '<i class="fa-solid fa-check-circle"></i>';
+        }
+
+        let dataFormatada = transacao.data ? transacao.data.split('-').reverse().join('/') : 'Sem Data';
+        let catVisual = transacao.categoria || 'Geral'; 
+        let corDaTag = coresCategorias[catVisual] || '#b2bec3';
+        let corDoTextoIdeal = getCorTextoIdeal(corDaTag);
+
+        let htmlAnexo = '';
+        if (transacao.comprovante) {
+            htmlAnexo = `
+                <div style="margin-top: 8px;">
+                    <a href="${transacao.comprovante}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #0984e3; background: rgba(9, 132, 227, 0.1); padding: 5px 10px; border-radius: 6px; text-decoration: none; font-weight: 700; border: 1px solid rgba(9, 132, 227, 0.2);">
+                        <i class="fa-solid fa-paperclip"></i> Ver Comprovante
+                    </a>
+                </div>
+            `;
+        }
+
+        const tr = document.createElement('tr');
+        tr.id = `linha-${transacao.id}`; 
+        tr.style = estiloLinha; 
+        tr.innerHTML = `
+            <td data-label="Data">${dataFormatada}</td>
+            <td data-label="Descrição" style="font-weight: 500;">${transacao.descricao}${htmlAnexo}</td>
+            <td data-label="Status">
+                <span style="background: ${corStatusBg}; color: ${corStatusTxt}; padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
+                    ${iconeStatus} ${textoStatus}
+                </span>
+            </td>
+            <td data-label="Categoria">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: ${corDaTag}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corDoTextoIdeal}; font-weight: 700;">${catVisual}</span>
+                    <span style="background: var(--fundo); border: 1px solid #dfe6e9; padding: 4px 8px; border-radius: 6px; font-size: 10px; opacity: 0.85;">
+                        <i class="fa-solid fa-user-pen" style="margin-right: 4px;"></i>${transacao.nomeUsuario || 'Operador'}
+                    </span>
+                </div>
+            </td>
+            <td data-label="Tipo" style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600;">${transacao.tipo.toUpperCase()}</td>
+            <td data-label="Valor" style="font-weight: 700;">R$ ${valorSeguro.toFixed(2)}</td>
+            <td data-label="Ações">
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <button onclick="prepararEdicao('${transacao.id}')" style="background:none; border:none; color:#0984e3; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="removerTransacao('${transacao.id}')" class="btn-excluir"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </td>
+        `;
+        corpoTabela.appendChild(tr);
+    });
+
     if (displayReceita) displayReceita.innerText = `R$ ${totalReceitas.toFixed(2)}`;
     if (displayDespesa) displayDespesa.innerText = `R$ ${totalDespesas.toFixed(2)}`;
-    
     if (displayLucro) {
         const lucro = totalReceitas - totalDespesas;
         displayLucro.innerText = `R$ ${lucro.toFixed(2)}`;
         displayLucro.style.color = lucro >= 0 ? 'var(--texto)' : 'var(--cor-alerta)';
     }
-
     if (typeof atualizarProgressoMeta === "function") atualizarProgressoMeta(totalReceitas);
     if (typeof atualizarGrafico === "function") atualizarGrafico(totalReceitas, totalDespesas);
     if (typeof atualizarGraficoBarras === "function") atualizarGraficoBarras(transacoesFiltradas);
