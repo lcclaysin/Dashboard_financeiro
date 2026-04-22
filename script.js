@@ -22,18 +22,19 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app); // <-- LINHA NOVA
 
-// --- 1. BANCOS DE DADOS ---
-let categorias = JSON.parse(localStorage.getItem('categoriasDashboard')) || [];
-let coresCategorias = JSON.parse(localStorage.getItem('coresDashboardCores')) || { 'Geral': '#b2bec3' };
-
 // --- 1. PREPARAÇÃO DO BANCO DE DADOS (DEV vs PROD) ---
-let transacoes = []; 
+let transacoes = [];
+let coresContas = {}; // Guarda as cores de cada banco
 
 // O detetive blindado: Se a URL NÃO contém "github.io", é o seu VS Code.
 const rodandoNoComputador = !window.location.hostname.includes("github.io");
 
-const nomeDaColecao = rodandoNoComputador ? "transacoes_teste" : "transacoes";
-//const nomeDaColecao = "transacoes_teste";
+//SISTEMA DE CATEGORIA SALVO NO BANCO
+const nomeColecaoCategorias = rodandoNoComputador ? "categorias_teste" : "categorias_oficial";
+const categoriasRef = collection(db, nomeColecaoCategorias);
+let categoriaEmEdicaoId = null; // Agora usamos o ID do Firebase
+
+const nomeDaColecao = rodandoNoComputador ? "Empresa_Teste" : "Empresa_Oficial";
 const transacoesRef = collection(db, nomeDaColecao);
 
 if (rodandoNoComputador) {
