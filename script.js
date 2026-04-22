@@ -325,12 +325,20 @@ function atualizarTela() {
     });
 
     // =====================================================================
-    // ⭐ ORDENAÇÃO: Mais recentes no topo (Ordem Decrescente)
+    // ⭐ ORDENAÇÃO AVANÇADA: Mais recentes no topo (Por Data e Hora Exata)
     // =====================================================================
     transacoesFiltradas.sort((a, b) => {
-        if (b.data > a.data) return 1;
-        if (b.data < a.data) return -1;
-        return 0; 
+        // 1. Tenta ordenar pelo dia (Ex: 22/04 vs 20/04)
+        if (b.data !== a.data) {
+            return b.data > a.data ? 1 : -1;
+        }
+        
+        // 2. Se for o mesmo dia, desempata pela hora exata (milissegundos)
+        // Se for um lançamento antigo que não tem timestamp, ele assume 0
+        const tempoA = a.timestamp || 0;
+        const tempoB = b.timestamp || 0;
+        
+        return tempoB - tempoA; 
     });
 
     // 3. RENDERIZAÇÃO DA TABELA
@@ -621,6 +629,7 @@ function atualizarGrafico(receitas, despesas) {
     });
 }
 
+// --- ATUALIZAÇÃO DO GRÁFICO DE BARRAS (CORES DINÂMICAS) ---
 function atualizarGraficoBarras(listaFiltrada) {
     const ctx = document.getElementById('graficoBarras').getContext('2d');
     if (meuGraficoBarras) { meuGraficoBarras.destroy(); }
@@ -629,24 +638,64 @@ function atualizarGraficoBarras(listaFiltrada) {
     listaFiltrada.forEach(t => {
         const cat = t.categoria || 'Geral';
         if (!resumoCategorias[cat]) { resumoCategorias[cat] = { receita: 0, despesa: 0 }; }
-        if (t.tipo === 'receita') { resumoCategorias[cat].receita += t.valor; } 
-        else { resumoCategorias[cat].despesa += t.valor; }
+        
+        // Matemática: Se estiver CANCELADO, vira R$ 0,00 no gráfico também
+        const statusDaTransacao = t.status || 'pago';
+        const valorParaCalculo = statusDaTransacao === 'cancelado' ? 0 : (parseFloat(t.valor) || 0);
+
+        if (t.tipo === 'receita') { resumoCategorias[cat].receita += valorParaCalculo; } 
+        else { resumoCategorias[cat].despesa += valorParaCalculo; }
     });
 
     const labels = Object.keys(resumoCategorias);
     const dadosReceitas = labels.map(cat => resumoCategorias[cat].receita);
     const dadosDespesas = labels.map(cat => resumoCategorias[cat].despesa);
+    
+    // A MÁGICA: Puxa o dicionário de cores e cria uma lista na mesma ordem das barras
+    const coresDasCategorias = labels.map(cat => coresCategorias[cat] || '#b2bec3');
 
     meuGraficoBarras = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [
-                { label: 'Receitas', data: dadosReceitas, backgroundColor: '#00b894', borderRadius: 6 },
-                { label: 'Despesas', data: dadosDespesas, backgroundColor: '#ff7675', borderRadius: 6 }
+                { 
+                    label: 'Receitas', 
+                    data: dadosReceitas, 
+                    backgroundColor: '#00b894', // Verde fixo para Receitas
+                    borderRadius: 6 
+                },
+                { 
+                    label: 'Despesas', 
+                    data: dadosDespesas, 
+                    backgroundColor: coresDasCategorias, // Cores dinâmicas das categorias para Despesas!
+                    borderRadius: 6 
+                }
             ]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Desempenho por Categoria' } }, scales: { y: { beginAtZero: true } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { 
+                title: { display: true, text: 'Desempenho por Categoria', color: 'var(--texto-secundario)' },
+                legend: { labels: { color: 'var(--texto)' } }
+            }, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(150, 150, 150, 0.1)' }, 
+                    ticks: { color: 'var(--texto-secundario)' } 
+                },
+                x: { 
+                    grid: { display: false }, 
+                    ticks: { 
+                        // A MÁGICA: Passamos a lista de cores no lugar de uma cor fixa
+                        color: coresDasCategorias,
+                        font: { weight: 'bold' } // Coloquei em negrito para a cor "acender" mais no fundo escuro
+                    } 
+                }
+            } 
+        }
     });
 }
 
@@ -803,7 +852,8 @@ const dados = {
         userId: auth.currentUser.uid, 
         nomeUsuario: auth.currentUser.displayName || "Operador",
         status: document.getElementById('status-lancamento').value,
-        comprovante: document.getElementById('url-comprovante').value // <-- NOVA LINHA (Grava o link da foto)
+        comprovante: document.getElementById('url-comprovante').value, // <-- NOVA LINHA (Grava o link da foto)
+        timestamp: Date.now() // <-- NOVA LINHA: Salva o milissegundo exato em que o botão foi clicado
     };
 
     let indexParaRolar = null; 
