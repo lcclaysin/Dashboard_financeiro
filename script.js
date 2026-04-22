@@ -1024,10 +1024,15 @@ function abrirModalQR() {
     // 1. Cria um ID único para essa sessão
     const sessaoId = 'qr_' + Date.now();
     
-    // 2. Monta o link que o celular vai abrir (apontando para o scanner.html)
+// 2. Monta o link que o celular vai abrir (Apontando para o arquivo NOVO)
     let urlBase = window.location.href.split('index.html')[0];
+    
+    // Limpa qualquer sujeira que possa estar na URL
+    urlBase = urlBase.split('?')[0]; 
     if (!urlBase.endsWith('/')) urlBase += '/';
-    const linkCelular = `${urlBase}scanner.html?id=${sessaoId}`;
+    
+    // O FURA-CACHE: Mudamos para camera.html e colocamos um número aleatório (?v=...)
+    const linkCelular = `${urlBase}camera.html?v=${Date.now()}&id=${sessaoId}`;
 
     // 3. Desenha o QR Code na tela
     qrCodeApp = new QRCode(container, {
