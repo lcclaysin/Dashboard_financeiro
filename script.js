@@ -1116,6 +1116,37 @@ function fecharModalQR() {
 if (typeof fecharModal !== 'undefined') window.fecharModal = fecharModal;
 if (typeof salvarCategoria !== 'undefined') window.salvarCategoria = salvarCategoria;
 
+
+// ==========================================
+// SCRIPT TEMPORÁRIO DE MIGRAÇÃO DE DADOS
+// ==========================================
+window.migrarParaPrivado = async function() {
+    console.log("Iniciando o resgate dos dados do Guilherme...");
+    
+    // Aponta para as duas gavetas
+    const gavetaVelha = collection(db, modoDesenvolvimento ? "transacoes_teste" : "transacoes");
+    const gavetaNova = collection(db, modoDesenvolvimento ? "privado_teste" : "privado");
+
+    try {
+        // Pega todos os documentos da gaveta velha
+        const snapshot = await getDocs(gavetaVelha);
+        let contador = 0;
+
+        // Copia um por um para a gaveta nova
+        snapshot.forEach(async (docSnap) => {
+            // Usamos setDoc com o mesmo ID para não criar duplicatas bizarras
+            await setDoc(doc(gavetaNova, docSnap.id), docSnap.data());
+            contador++;
+        });
+
+        console.log(`Sucesso! ${contador} lançamentos foram clonados para a pasta 'privado'.`);
+        alert(`Migração concluída! ${contador} lançamentos salvos.`);
+    } catch (erro) {
+        console.error("Erro na migração:", erro);
+    }
+};
+
+
 // --- 12. A CHAVE MESTRA: EXPORTANDO FUNÇÕES PARA O HTML ---
 window.toggleTheme = toggleTheme;
 window.definirMeta = definirMeta;
