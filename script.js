@@ -1116,38 +1116,6 @@ function fecharModalQR() {
 if (typeof fecharModal !== 'undefined') window.fecharModal = fecharModal;
 if (typeof salvarCategoria !== 'undefined') window.salvarCategoria = salvarCategoria;
 
-
-// ==========================================
-// SCRIPT TEMPORÁRIO DE MIGRAÇÃO DE DADOS (V3)
-// ==========================================
-window.migrarParaPrivado = async function() {
-    console.log("Iniciando o resgate dos dados do Guilherme...");
-    
-    const nomePastaAntiga = "transacoes";
-    const nomePastaNova = "privado";
-
-    const gavetaVelha = collection(db, nomePastaAntiga);
-    const gavetaNova = collection(db, nomePastaNova);
-
-    try {
-        const snapshot = await getDocs(gavetaVelha);
-        let contador = 0;
-
-        // O 'for...of' faz o JavaScript esperar cada arquivo ser salvo antes de continuar
-        for (const docSnap of snapshot.docs) {
-            await setDoc(doc(gavetaNova, docSnap.id), docSnap.data());
-            contador++;
-        }
-
-        console.log(`Sucesso! ${contador} lançamentos clonados para '${nomePastaNova}'.`);
-        alert(`Migração concluída! ${contador} lançamentos resgatados e salvos.`);
-    } catch (erro) {
-        console.error("Erro na migração:", erro);
-        alert("O Firebase bloqueou. As regras de segurança já foram atualizadas?");
-    }
-};
-
-
 // --- 12. A CHAVE MESTRA: EXPORTANDO FUNÇÕES PARA O HTML ---
 window.toggleTheme = toggleTheme;
 window.definirMeta = definirMeta;
