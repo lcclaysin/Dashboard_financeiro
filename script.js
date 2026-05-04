@@ -1118,28 +1118,28 @@ if (typeof salvarCategoria !== 'undefined') window.salvarCategoria = salvarCateg
 
 
 // ==========================================
-// SCRIPT TEMPORÁRIO DE MIGRAÇÃO DE DADOS
+// SCRIPT TEMPORÁRIO DE MIGRAÇÃO DE DADOS (CORRIGIDO)
 // ==========================================
 window.migrarParaPrivado = async function() {
     console.log("Iniciando o resgate dos dados do Guilherme...");
     
-    // Aponta para as duas gavetas
-    const gavetaVelha = collection(db, modoDesenvolvimento ? "transacoes_teste" : "transacoes");
-    const gavetaNova = collection(db, modoDesenvolvimento ? "privado_teste" : "privado");
+    // Nomes cravados diretamente para não dar erro de variável
+    const nomePastaAntiga = "transacoes"; // De onde vai sair
+    const nomePastaNova = "privado";     // Para onde vai
+
+    const gavetaVelha = collection(db, nomePastaAntiga);
+    const gavetaNova = collection(db, nomePastaNova);
 
     try {
-        // Pega todos os documentos da gaveta velha
         const snapshot = await getDocs(gavetaVelha);
         let contador = 0;
 
-        // Copia um por um para a gaveta nova
         snapshot.forEach(async (docSnap) => {
-            // Usamos setDoc com o mesmo ID para não criar duplicatas bizarras
             await setDoc(doc(gavetaNova, docSnap.id), docSnap.data());
             contador++;
         });
 
-        console.log(`Sucesso! ${contador} lançamentos foram clonados para a pasta 'privado'.`);
+        console.log(`Sucesso! ${contador} lançamentos foram clonados para a pasta '${nomePastaNova}'.`);
         alert(`Migração concluída! ${contador} lançamentos salvos.`);
     } catch (erro) {
         console.error("Erro na migração:", erro);
