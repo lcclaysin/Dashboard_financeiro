@@ -22,185 +22,31 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app); // <-- LINHA NOVA
 
+// --- 1. BANCOS DE DADOS ---
+let categorias = JSON.parse(localStorage.getItem('categoriasDashboard')) || [];
+let coresCategorias = JSON.parse(localStorage.getItem('coresDashboardCores')) || { 'Geral': '#b2bec3' };
+
 // --- 1. PREPARAÇÃO DO BANCO DE DADOS (DEV vs PROD) ---
-let transacoes = [];
-let coresContas = {}; 
-let categorias = []; // NOVO: Faltava declarar esta variável!
-let coresCategorias = {}; // NOVO: Faltava declarar esta também!
+let transacoes = []; 
 
 // O detetive blindado: Se a URL NÃO contém "github.io", é o seu VS Code.
 const rodandoNoComputador = !window.location.hostname.includes("github.io");
 
-// SISTEMA DE CATEGORIA SALVO NO BANCO
-const nomeColecaoCategorias = rodandoNoComputador ? "categorias_teste" : "categorias_oficial";
-const categoriasRef = collection(db, nomeColecaoCategorias);
-let categoriaEmEdicaoId = null; 
-
-// SISTEMA DE CARTEIRA SALVO NO BANCO
-const nomeColecaoCarteiras = rodandoNoComputador ? "carteiras_empresa_teste" : "carteiras_empresa_oficial";
-const carteirasRef = collection(db, nomeColecaoCarteiras);
-let sortableContasInstance = null;
-
-const nomeDaColecao = rodandoNoComputador ? "Empresa_Teste" : "Empresa_Oficial";
+const nomeDaColecao = rodandoNoComputador ? "transacoes_teste" : "transacoes";
 const transacoesRef = collection(db, nomeDaColecao);
 
 if (rodandoNoComputador) {
-    console.warn("🛠️ MODO DESENVOLVIMENTO: Gravando na pasta 'Empresa_Teste'");
+    console.warn("🛠️ MODO DESENVOLVIMENTO: Gravando na pasta 'transacoes_teste'");
 } else {
     console.log("🚀 MODO PRODUÇÃO: Conectado ao banco oficial!");
 }
+// --- 2. MÁGICA DO TEMPO REAL (Ouvinte) ---
 
-// 1. Abrir e Fechar Modal
-document.getElementById('btn-abrir-modal-conta').addEventListener('click', () => {
-    document.getElementById('modal-contas').style.display = 'flex';
-});
-document.getElementById('fechar-modal-contas').addEventListener('click', () => {
-    document.getElementById('modal-contas').style.display = 'none';
-});
-
-// Variável global para saber se estamos criando ou editando
-let idContaEmEdicao = null; 
-
-// 2. Salvar ou Atualizar Conta
-document.getElementById('btn-salvar-conta').addEventListener('click', async () => {
-    const inputNome = document.getElementById('nome-nova-conta');
-    const inputCor = document.getElementById('cor-nova-conta');
-    const nomeBanco = inputNome.value.trim();
-
-    if (nomeBanco !== "") {
-        const btnSalvar = document.getElementById('btn-salvar-conta');
-        btnSalvar.innerText = "...";
-        
-        try {
-            if (idContaEmEdicao) {
-                // MODO EDIÇÃO: Atualiza a conta existente
-                await updateDoc(doc(db, nomeColecaoCarteiras, idContaEmEdicao), {
-                    nome: nomeBanco,
-                    cor: inputCor.value
-                });
-                idContaEmEdicao = null; // Limpa a memória de edição
-            } else {
-                // MODO NOVO: Cria uma conta do zero
-                await addDoc(carteirasRef, {
-                    nome: nomeBanco,
-                    cor: inputCor.value,
-                    criadoEm: Date.now(),
-                    userId: auth.currentUser.uid 
-                });
-            }
-            inputNome.value = "";
-            inputNome.focus();
-            btnSalvar.innerText = "Salvar";
-        } catch (erro) {
-            console.error(erro);
-            alert("Erro ao salvar conta. Verifique sua conexão.");
-            btnSalvar.innerText = idContaEmEdicao ? "Atualizar" : "Salvar";
-        }
-    }
-});
-
-// 3. Funções de Ação (Editar e Excluir)
-window.prepararEdicaoConta = function(docId, nomeAtual, corAtual) {
-    document.getElementById('nome-nova-conta').value = nomeAtual;
-    document.getElementById('cor-nova-conta').value = corAtual || '#8A05BE';
-    
-    idContaEmEdicao = docId; // Memoriza o ID que estamos editando
-    document.getElementById('btn-salvar-conta').innerText = "Atualizar";
-};
-
-window.excluirConta = async function(docId, nomeConta) {
-    if (confirm(`Tem certeza que deseja excluir a conta "${nomeConta}"?`)) {
-        try {
-            await deleteDoc(doc(db, nomeColecaoCarteiras, docId));
-        } catch (erro) {
-            alert("Erro ao excluir a conta.");
-        }
-    }
-};
-
-// 4. O Ouvinte que atualiza TUDO ao mesmo tempo (Contas)
-// 4. O Ouvinte que atualiza TUDO ao mesmo tempo (Contas)
-let ouvinteContas = null;
-
-function iniciarOuvinteContas() {
-    if (ouvinteContas) ouvinteContas(); // Limpa se já existir, para não duplicar
-
-    ouvinteContas = onSnapshot(carteirasRef, (snapshot) => {
-        const selectConta = document.getElementById('conta');
-        const selectFiltroConta = document.getElementById('filtro-conta'); 
-        const listaModal = document.getElementById('lista-contas');
-        
-        // LIMPEZA TOTAL ANTES DE PREENCHER
-        if (selectConta) selectConta.innerHTML = '<option value="" disabled selected>Selecione a conta...</option>';
-        if (selectFiltroConta) selectFiltroConta.innerHTML = '<option value="todas">Todas as Contas</option>';
-        if (listaModal) listaModal.innerHTML = ''; 
-        
-        let temConta = false;
-        coresContas = {}; 
-
-        // PASSO 1: Puxa do banco e coloca numa lista temporária para podermos organizar
-        let listaDeContas = [];
-        snapshot.forEach((docSnap) => {
-            listaDeContas.push({ id: docSnap.id, ...docSnap.data() });
-        });
-
-        // PASSO 2: Ordena matematicamente pelo carimbo 'ordem' (Quem for novo vai pro final: 9999)
-        listaDeContas.sort((a, b) => (a.ordem ?? 9999) - (b.ordem ?? 9999));
-
-        // PASSO 3: Desenha tudo na tela, agora na ordem rigorosa
-        listaDeContas.forEach((carteira) => {
-            const docId = carteira.id; 
-            const corDaConta = carteira.cor || '#b2bec3';
-            
-            if (selectConta) selectConta.innerHTML += `<option value="${carteira.nome}" style="color: ${corDaConta}; font-weight: 600;">${carteira.nome}</option>`;
-            if (selectFiltroConta) selectFiltroConta.innerHTML += `<option value="${carteira.nome}">${carteira.nome}</option>`;
-            
-            if (listaModal) {
-                listaModal.innerHTML += `
-                    <li class="item-categoria drag-item" data-nome="${carteira.nome}" data-id="${docId}">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <i class="fa-solid fa-grip-lines drag-handle" style="cursor: grab; color: #dfe6e9; padding: 5px 10px; font-size: 16px; transition: 0.2s;" title="Arraste para reordenar"></i>
-                            <span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background-color: ${corDaConta};"></span>
-                            <span style="color: var(--texto); font-weight: 500; font-size: 14px;">${carteira.nome}</span>
-                        </div>
-                        <div style="display: flex; gap: 15px; align-items: center;">
-                            <i class="fa-solid fa-pen" style="color: #0984e3; cursor: pointer; padding: 5px;" onclick="prepararEdicaoConta('${docId}', '${carteira.nome}', '${corDaConta}')" title="Editar"></i>
-                            <button class="btn-del-cat" onclick="excluirConta('${docId}', '${carteira.nome}')" title="Excluir" style="background: transparent; border: none; margin: 0; padding: 0;"><i class="fa-solid fa-trash" style="color: #ff7675; cursor: pointer; padding: 5px;"></i></button>
-                        </div>
-                    </li>
-                `;
-            }
-            coresContas[carteira.nome] = corDaConta; 
-            temConta = true;
-        });
-
-        if (!temConta && selectConta) {
-            selectConta.innerHTML = '<option value="" disabled selected>Clique no + para criar uma conta</option>';
-            if (listaModal) listaModal.innerHTML = '<div style="text-align: center; color: var(--texto-secundario); padding: 20px;">Nenhuma conta cadastrada.</div>';
-        } else if (typeof ultimaContaAdicionada !== 'undefined' && ultimaContaAdicionada && selectConta) {
-            selectConta.value = ultimaContaAdicionada;
-        }
-        
-        atualizarCorDaConta();
-
-        // PASSO 4: A Mágica de Salvar a Ordem no Firebase
-        if (listaModal) {
-            if (sortableContasInstance) sortableContasInstance.destroy(); 
-            sortableContasInstance = new Sortable(listaModal, {
-                animation: 150, handle: '.drag-handle', filter: '.fixed-item',
-                onEnd: function () {
-                    const itensNaTela = document.querySelectorAll('#lista-contas .item-categoria');
-                    itensNaTela.forEach((li, index) => {
-                        const docId = li.getAttribute('data-id');
-                        updateDoc(doc(db, nomeColecaoCarteiras, docId), { ordem: index });
-                    });
-                }
-            });
-        }
-
-        atualizarTela();
-    });
+if (!categorias.includes('Geral')) {
+    categorias.unshift('Geral');
+    localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
 }
+
 // --- 1.1. GESTÃO DO TEMA CLARO/ESCURO ---
 const temaSalvo = localStorage.getItem('temaDashboard');
 if (temaSalvo === 'dark' || (!temaSalvo && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -244,7 +90,6 @@ const filtroTipo = document.getElementById('filtro-tipo');
 const filtroCategoria = document.getElementById('filtro-categoria');
 const filtroDataInicio = document.getElementById('filtro-data-inicio');
 const filtroDataFim = document.getElementById('filtro-data-fim');
-const filtroConta = document.getElementById('filtro-conta'); // Adicione nos capturadores se quiser
 
 // --- 3. INICIALIZAÇÃO E DATAS ---
 function getDataHoje() {
@@ -262,9 +107,6 @@ filtroCategoria.addEventListener('change', atualizarTela);
 filtroDataInicio.addEventListener('change', atualizarTela);
 filtroDataFim.addEventListener('change', atualizarTela);
 
-
-if (filtroConta) filtroConta.addEventListener('change', atualizarTela);
-
 // --- FUNÇÃO MATEMÁTICA: CONTRASTE AUTOMÁTICO (YIQ) ---
 function getCorTextoIdeal(hexColor) {
     if (!hexColor) return '#ffffff';
@@ -281,16 +123,6 @@ function getCorTextoIdeal(hexColor) {
     // Retorna Preto Chumbo se o fundo for claro, e Branco se o fundo for escuro
     return (luminosidade > 128) ? '#2d3436' : '#ffffff';
 }
-
-// --- FUNÇÃO VISUAL: COLORE A CAIXA DA CONTA ---
-function atualizarCorDaConta() {
-    const select = document.getElementById('conta');
-    const cor = coresContas[select.value] || '#b2bec3';
-    // Força a borda da mesma largura e cor que a categoria
-    select.style.borderLeft = `5px solid ${cor}`; 
-}
-// NOVO: Obriga o navegador a pintar a borda na mesma hora que você troca de banco!
-document.getElementById('conta').addEventListener('change', atualizarCorDaConta);
 
 // --- FUNÇÃO VISUAL: COLORE A CAIXA DE SELEÇÃO ---
 function atualizarCorDaCaixaDeSelecao() {
@@ -336,172 +168,111 @@ function atualizarProgressoMeta(faturamentoTotal) {
     }
 }
 
-// --- 5. GESTÃO DE CATEGORIAS (MIGRADO PARA NUVEM) ---
+// --- 5. GESTÃO DE CATEGORIAS ---
 let sortableInstance = null;
 
-// 1. Ouvinte em Tempo Real das Categorias na Nuvem
-let ouvinteCategorias = null;
-function iniciarOuvinteCategorias() {
-    if (ouvinteCategorias) ouvinteCategorias(); // Limpa se já existir
-    ouvinteCategorias = onSnapshot(categoriasRef, (snapshot) => {
-        onSnapshot(categoriasRef, (snapshot) => {
-            const selectForm = document.getElementById('categoria');
-            const selectFiltro = document.getElementById('filtro-categoria');
-            const listaModal = document.getElementById('lista-categorias-modal') || document.getElementById('lista-categorias'); 
+function atualizarListasDeCategorias() {
+    const selectForm = document.getElementById('categoria');
+    const selectFiltro = document.getElementById('filtro-categoria');
+    const listaModal = document.getElementById('lista-categorias');
 
-            const categoriaSelecionadaAntes = selectForm ? selectForm.value : 'Geral';
+    const categoriaSelecionadaAntes = selectForm.value || 'Geral';
 
-            // Zera as variáveis para reconstruir com dados frescos da nuvem
-            categorias = ['Geral'];
-            coresCategorias = { 'Geral': '#b2bec3' };
+    selectForm.innerHTML = '';
+    selectFiltro.innerHTML = '<option value="todas">Todas as Categorias</option>';
+    listaModal.innerHTML = '';
 
-            if (selectForm) selectForm.innerHTML = '';
-            if (selectFiltro) selectFiltro.innerHTML = '<option value="todas">Todas as Categorias</option>';
-            if (listaModal) listaModal.innerHTML = '';
+    categorias.forEach((cat) => {
+        let corDaCategoria = coresCategorias[cat] || '#b2bec3';
+        
+        // Pinta o texto da opção no menu
+        selectForm.innerHTML += `<option value="${cat}" style="color: ${corDaCategoria}; font-weight: 600;">${cat}</option>`;
+        selectFiltro.innerHTML += `<option value="${cat}">${cat}</option>`;
+        
+        let htmlBolinhaColorida = `<span style="width: 12px; height: 12px; border-radius: 50%; background-color: ${corDaCategoria}; display: inline-block;"></span>`;
 
-            // A. Carrega as categorias do Firebase
-            snapshot.forEach((docSnap) => {
-                const cat = docSnap.data();
-                const id = docSnap.id;
-                
-                if(cat.nome !== 'Geral' && !categorias.includes(cat.nome)) {
-                    categorias.push(cat.nome);
-                    coresCategorias[cat.nome] = cat.cor || '#b2bec3';
-                }
-                // Guarda o ID do Firebase escondido para podermos editar/excluir depois
-                coresCategorias[cat.nome + '_id'] = id; 
+        if (cat !== 'Geral') {
+            listaModal.innerHTML += `
+                <li class="item-categoria drag-item" data-nome="${cat}">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-grip-lines drag-handle" title="Arraste para reordenar"></i>
+                        ${htmlBolinhaColorida}
+                        <span style="font-weight: 500;">${cat}</span>
+                    </div>
+                    <button class="btn-del-cat" onclick="removerCategoria('${cat}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                </li>
+            `;
+        } else {
+            listaModal.innerHTML += `
+                <li class="item-categoria fixed-item" data-nome="${cat}">
+                    <div style="display: flex; align-items: center; gap: 10px; padding-left: 26px;">
+                        ${htmlBolinhaColorida}
+                        <span style="font-weight: 500;">${cat}</span>
+                    </div>
+                    <span style="color: #b2bec3; font-size: 12px; margin-right: 10px;">(Padrão Fixo)</span>
+                </li>
+            `;
+        }
+    });
+
+    if (categorias.includes(categoriaSelecionadaAntes)) {
+        selectForm.value = categoriaSelecionadaAntes;
+    }
+    
+    atualizarCorDaCaixaDeSelecao(); // Chama a função para já pintar a caixa atual
+
+    if (sortableInstance) sortableInstance.destroy(); 
+    sortableInstance = new Sortable(listaModal, {
+        animation: 150, handle: '.drag-handle', filter: '.fixed-item',
+        onEnd: function () {
+            const novaOrdem = [];
+            document.querySelectorAll('#lista-categorias .item-categoria').forEach(li => {
+                novaOrdem.push(li.getAttribute('data-nome'));
             });
-
-            // B. Renderiza tudo na tela
-            categorias.forEach((cat) => {
-                let corDaCategoria = coresCategorias[cat];
-                let idDoBanco = coresCategorias[cat + '_id']; 
-
-                // Injeta nos selects (Com a cor no texto!)
-                if (selectForm) selectForm.innerHTML += `<option value="${cat}" style="color: ${corDaCategoria}; font-weight: 600;">${cat}</option>`;
-                if (selectFiltro) selectFiltro.innerHTML += `<option value="${cat}">${cat}</option>`;
-                
-                let htmlBolinhaColorida = `<span style="width: 12px; height: 12px; border-radius: 50%; background-color: ${corDaCategoria}; display: inline-block;"></span>`;
-
-                // Injeta no Modal
-                if (listaModal) {
-                    if (cat !== 'Geral') {
-                        listaModal.innerHTML += `
-                            <li class="item-categoria drag-item" data-nome="${cat}" data-id="${idDoBanco}">
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <i class="fa-solid fa-grip-lines drag-handle" title="Arraste para reordenar" style="cursor: grab; color: #dfe6e9; padding: 5px 10px; font-size: 16px;"></i>
-                                    ${htmlBolinhaColorida}
-                                    <span style="font-weight: 500; color: var(--texto);">${cat}</span>
-                                </div>
-                                <div style="display: flex; gap: 15px; align-items: center;">
-                                    <i class="fa-solid fa-pen" style="color: #0984e3; cursor: pointer; padding: 5px;" onclick="prepararEdicaoCategoria('${idDoBanco}', '${cat}', '${corDaCategoria}')" title="Editar"></i>
-                                    <button class="btn-del-cat" onclick="removerCategoria('${idDoBanco}', '${cat}')" title="Excluir" style="background: transparent; border: none; margin: 0; padding: 0;"><i class="fa-solid fa-trash" style="color: #ff7675; cursor: pointer; padding: 5px;"></i></button>
-                                </div>
-                            </li>
-                        `;
-                    } else {
-                        listaModal.innerHTML += `
-                            <li class="item-categoria fixed-item" data-nome="${cat}">
-                                <div style="display: flex; align-items: center; gap: 10px; padding-left: 26px;">
-                                    ${htmlBolinhaColorida}
-                                    <span style="font-weight: 500; color: var(--texto);">${cat}</span>
-                                </div>
-                                <span style="color: var(--texto-secundario); font-size: 12px; margin-right: 10px;">(Padrão Fixo)</span>
-                            </li>
-                        `;
-                    }
-                }
-            });
-
-            // Devolve a seleção que o usuário estava usando
-            if (selectForm && categorias.includes(categoriaSelecionadaAntes)) {
-                selectForm.value = categoriaSelecionadaAntes;
-            }
-            
-            if (typeof atualizarCorDaCaixaDeSelecao === 'function') atualizarCorDaCaixaDeSelecao(); 
-
-            if (listaModal) {
-                if (sortableInstance) sortableInstance.destroy(); 
-                sortableInstance = new Sortable(listaModal, {
-                    animation: 150, handle: '.drag-handle', filter: '.fixed-item'
-                });
-            }
-            
-            // Atualiza os gráficos com as novas cores
-            atualizarTela();
-        });
+            categorias = novaOrdem;
+            localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
+            atualizarListasDeCategorias(); 
+        }
     });
 }
 
 function abrirModal() { document.getElementById('modal-categorias').style.display = 'flex'; }
-function fecharModal() { 
-    document.getElementById('modal-categorias').style.display = 'none'; 
-    categoriaEmEdicaoId = null;
-    if(document.getElementById('nova-categoria')) document.getElementById('nova-categoria').value = '';
-    if(document.getElementById('btn-salvar-categoria')) document.getElementById('btn-salvar-categoria').innerText = "Salvar";
-}
+function fecharModal() { document.getElementById('modal-categorias').style.display = 'none'; }
 
-// 2. Salvar ou Atualizar na Nuvem (Substitui a antiga adicionarCategoria)
-window.salvarCategoria = async function() {
+function adicionarCategoria() {
     const input = document.getElementById('nova-categoria');
     const inputCor = document.getElementById('cor-categoria');
-    const btnSalvar = document.getElementById('btn-salvar-categoria');
     
     let nome = input.value.trim();
     let corEscolhida = inputCor.value; 
 
     if (nome) nome = nome.charAt(0).toUpperCase() + nome.slice(1); 
 
-    if (nome !== '') {
-        btnSalvar.innerText = "...";
-        try {
-            if (categoriaEmEdicaoId) {
-                // MODO EDIÇÃO: Atualiza no Firebase
-                await updateDoc(doc(db, nomeColecaoCategorias, categoriaEmEdicaoId), {
-                    nome: nome,
-                    cor: corEscolhida
-                });
-                categoriaEmEdicaoId = null;
-            } else {
-                // MODO NOVO: Cria no Firebase
-                await addDoc(categoriasRef, {
-                    nome: nome,
-                    cor: corEscolhida,
-                    criadoEm: Date.now(),
-                    userId: auth.currentUser.uid 
-                });
-            }
-            input.value = '';
-            input.focus();
-            btnSalvar.innerText = "Salvar";
-        } catch (erro) {
-            console.error("Erro ao salvar categoria:", erro);
-            alert("Erro ao salvar na nuvem.");
-            btnSalvar.innerText = categoriaEmEdicaoId ? "Atualizar" : "Salvar";
-        }
+    if (nome !== '' && !categorias.includes(nome)) {
+        categorias.push(nome);
+        coresCategorias[nome] = corEscolhida; 
+        
+        localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
+        localStorage.setItem('coresDashboardCores', JSON.stringify(coresCategorias)); 
+        
+        input.value = '';
+        atualizarListasDeCategorias();
+        atualizarTela(); 
     }
-};
+    input.focus();
+}
 
-window.prepararEdicaoCategoria = function(docId, nomeAtual, corAtual) {
-    if (nomeAtual === 'Geral') return; 
-    document.getElementById('nova-categoria').value = nomeAtual;
-    document.getElementById('cor-categoria').value = corAtual || '#0984e3';
-    
-    categoriaEmEdicaoId = docId; // Salva o ID do Firebase
-    document.getElementById('btn-salvar-categoria').innerText = "Atualizar";
-};
-
-// 3. Remover da Nuvem
-window.removerCategoria = async function(docId, nomeCategoria) {
+function removerCategoria(nomeCategoria) {
     if (nomeCategoria === 'Geral') return; 
-    if (confirm(`Tem certeza que deseja excluir a categoria "${nomeCategoria}"?`)) {
-        try {
-            await deleteDoc(doc(db, nomeColecaoCategorias, docId));
-        } catch (erro) {
-            alert("Erro ao excluir. Verifique sua conexão.");
-        }
-    }
-};
+    categorias = categorias.filter(cat => cat !== nomeCategoria);
+    
+    delete coresCategorias[nomeCategoria];
+
+    localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
+    localStorage.setItem('coresDashboardCores', JSON.stringify(coresCategorias));
+    atualizarListasDeCategorias();
+    atualizarTela();
+}
 
 // --- FUNÇÃO PRINCIPAL DE ATUALIZAÇÃO DA TABELA ---
 function atualizarTela() {
@@ -518,7 +289,6 @@ function atualizarTela() {
     const filtroDataInicio = document.getElementById('filtro-data-inicio') ? document.getElementById('filtro-data-inicio').value : '';
     const filtroDataFim = document.getElementById('filtro-data-fim') ? document.getElementById('filtro-data-fim').value : '';
     const filtroStatus = document.getElementById('filtro-status') ? document.getElementById('filtro-status').value : 'todos';
-    const filtroContaValor = document.getElementById('filtro-conta') ? document.getElementById('filtro-conta').value : 'todas';
     
     const buscaTexto = document.getElementById('filtro-busca') ? document.getElementById('filtro-busca').value.toLowerCase().trim() : '';
     const inputMin = document.getElementById('filtro-valor-min') ? document.getElementById('filtro-valor-min').value : '';
@@ -533,7 +303,6 @@ function atualizarTela() {
         
         let passaTipo = (filtroTipo === 'todos' || transacao.tipo === filtroTipo);
         let passaCategoria = (filtroCategoria === 'todas' || transacao.categoria === filtroCategoria);
-        let passaConta = (filtroContaValor === 'todas' || transacao.conta === filtroContaValor);
         
         let passaData = true;
         if (filtroDataInicio && transacao.data < filtroDataInicio) passaData = false;
@@ -549,7 +318,7 @@ function atualizarTela() {
         const statusDaTransacao = transacao.status || 'pago'; 
         const passaStatus = (filtroStatus === 'todos' || statusDaTransacao === filtroStatus);
 
-        if (passaTipo && passaCategoria && passaConta && passaData && passaBusca && passaValor && passaOperador && passaStatus) {
+        if (passaTipo && passaCategoria && passaData && passaBusca && passaValor && passaOperador && passaStatus) {
             transacoesFiltradas.push(transacao);
         }
     });
@@ -593,9 +362,6 @@ function atualizarTela() {
         let catVisual = transacao.categoria || 'Geral'; 
         let corDaTag = coresCategorias[catVisual] || '#b2bec3';
         let corDoTextoIdeal = getCorTextoIdeal(corDaTag);
-        let contaVisual = transacao.conta || 'Sem Conta'; 
-        let corDaConta = coresContas[contaVisual] || '#b2bec3';
-        let corTextoConta = getCorTextoIdeal(corDaConta);
 
         let htmlAnexo = '';
         if (transacao.comprovante) {
@@ -627,9 +393,6 @@ function atualizarTela() {
                     </span>
                 </div>
             </td>
-            <td data-label="Conta">
-                 <span style="background: ${corDaConta}; padding: 6px 12px; border-radius: 12px; font-size: 11px; color: ${corTextoConta}; font-weight: 700;">${contaVisual}</span>
-            </td>
             <td data-label="Tipo" style="color: ${transacao.tipo === 'receita' ? 'var(--cor-primaria)' : 'var(--cor-alerta)'}; font-weight: 600;">${transacao.tipo.toUpperCase()}</td>
             <td data-label="Valor" style="font-weight: 700;">R$ ${valorSeguro.toFixed(2)}</td>
             <td data-label="Ações">
@@ -652,117 +415,7 @@ function atualizarTela() {
     if (typeof atualizarProgressoMeta === "function") atualizarProgressoMeta(totalReceitas);
     if (typeof atualizarGrafico === "function") atualizarGrafico(totalReceitas, totalDespesas);
     if (typeof atualizarGraficoBarras === "function") atualizarGraficoBarras(transacoesFiltradas);
-
-    renderizarCartoesDeContas();
 }
-
-// COLE A FUNÇÃO NOVA LOGO ABAIXO:
-function renderizarCartoesDeContas() {
-    const carrossel = document.getElementById('carrossel-contas');
-    if (!carrossel) return;
-    
-    carrossel.innerHTML = ''; 
-    const nomesDasContas = Object.keys(coresContas); // Pega os bancos cadastrados
-
-    if (nomesDasContas.length === 0) {
-        carrossel.innerHTML = `<div style="color: var(--texto-secundario); font-size: 13px;">Nenhuma conta cadastrada ainda.</div>`;
-        return;
-    }
-
-    nomesDasContas.forEach(nomeConta => {
-        let saldoConta = 0;
-        const corConta = coresContas[nomeConta] || '#b2bec3';
-
-        // O Motor de Cálculo: Soma tudo dessa conta!
-        transacoes.forEach(t => {
-            // Ignora o que foi cancelado
-            if (t.conta === nomeConta && t.status !== 'cancelado') {
-                const valor = parseFloat(t.valor) || 0;
-                if (t.tipo === 'receita') saldoConta += valor;
-                if (t.tipo === 'despesa') saldoConta -= valor;
-            }
-        });
-
-        // Aplica o "blur" se o olho estiver fechado
-        const saldoFormatado = `R$ ${saldoConta.toFixed(2)}`;
-        const classeOculto = saldosOcultos ? 'saldo-oculto' : '';
-        const corSaldo = saldoConta < 0 ? 'var(--cor-alerta)' : 'var(--texto)'; // Fica vermelho se a conta ficar negativa
-
-        // Injeta o cartão no HTML
-        carrossel.innerHTML += `
-            <div class="cartao-conta" style="border-left: 5px solid ${corConta};" onclick="filtrarPorContaCartao('${nomeConta}')">
-                <div class="nome-banco">
-                    <i class="fa-solid fa-wallet" style="color: ${corConta};"></i> ${nomeConta}
-                </div>
-                <div class="saldo-banco ${classeOculto}" style="color: ${corSaldo};">${saldoFormatado}</div>
-            </div>
-        `;
-    });
-}
-
-// --- SISTEMA DE PRIVACIDADE DE SALDOS ---
-let saldosOcultos = false;
-
-window.toggleSaldos = function() {
-    saldosOcultos = !saldosOcultos;
-    const btnIcon = document.querySelector('#btn-ocultar-saldos i');
-    
-    if (saldosOcultos) {
-        btnIcon.classList.replace('fa-eye', 'fa-eye-slash');
-    } else {
-        btnIcon.classList.replace('fa-eye-slash', 'fa-eye');
-    }
-    
-    atualizarTela(); // Recarrega os valores borrados
-};
-
-// ==========================================
-// LÓGICA DE ARRASTAR O CARROSSEL COM O MOUSE
-// ==========================================
-let isDown = false;
-let startX;
-let scrollLeft;
-let isDragging = false; // Memória para diferenciar "clique" de "arraste"
-
-const carrosselContas = document.getElementById('carrossel-contas');
-
-if (carrosselContas) {
-    carrosselContas.addEventListener('mousedown', (e) => {
-        isDown = true;
-        isDragging = false; // Toda vez que clica, zera o arraste
-        startX = e.pageX - carrosselContas.offsetLeft;
-        scrollLeft = carrosselContas.scrollLeft;
-    });
-
-    carrosselContas.addEventListener('mouseleave', () => { isDown = false; });
-    carrosselContas.addEventListener('mouseup', () => { isDown = false; });
-
-    carrosselContas.addEventListener('mousemove', (e) => {
-        if (!isDown) return;
-        e.preventDefault(); // Impede o navegador de tentar arrastar a tela ou os ícones
-        
-        const x = e.pageX - carrosselContas.offsetLeft;
-        const walk = (x - startX) * 1.5; // O 1.5 é a velocidade do arraste
-        
-        if (Math.abs(walk) > 5) isDragging = true; // Se o mouse moveu mais de 5 pixels, o sistema entende que é arraste
-        
-        carrosselContas.scrollLeft = scrollLeft - walk;
-    });
-}
-
-// ==========================================
-// Clicou no cartão do banco? Filtra a tabela!
-// ==========================================
-window.filtrarPorContaCartao = function(nomeConta) {
-    if (isDragging) return; // A MÁGICA: Se estava arrastando, ignora o clique!
-    
-    const filtroConta = document.getElementById('filtro-conta');
-    if (filtroConta) {
-        filtroConta.value = nomeConta;
-        atualizarTela();
-        document.querySelector('.tabela-container').scrollIntoView({ behavior: 'smooth' });
-    }
-};
 
 // --- 13. SISTEMA DE AUTENTICAÇÃO (LOGIN / LOGOUT) ---
 const overlayLogin = document.getElementById('login-overlay');
@@ -777,8 +430,6 @@ let unsubscribeSnapshot = null;
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        iniciarOuvinteContas();
-        iniciarOuvinteCategorias();
         if (overlayLogin) overlayLogin.style.display = 'none';
 
         // 1. LÓGICA DO NOME (BEM-VINDO)
@@ -1164,12 +815,6 @@ function prepararEdicao(id) {
     document.getElementById('descricao').value = t.descricao;
     document.getElementById('valor').value = t.valor;
     document.getElementById('data').value = t.data;
-    // NOVO: Puxa a Conta para o modo de Edição e já pinta a borda!
-    if (t.conta) {
-        document.getElementById('conta').value = t.conta;
-        atualizarCorDaConta(); 
-    }
-
     document.getElementById('categoria').value = t.categoria;
     document.getElementById('tipo').value = t.tipo;
 
@@ -1191,10 +836,10 @@ function prepararEdicao(id) {
 
 // Memória temporária para guardar a última categoria e data de inclusão
 let ultimaCategoriaAdicionada = 'Geral';
-let ultimaDataAdicionada = getDataHoje();
+let ultimaDataAdicionada = getDataHoje(); // NOVO: Inicia com a data de hoje
+// Memória do formulário contínuo
 let ultimoTipoAdicionado = 'despesa'; 
 let ultimoStatusAdicionado = 'pago';
-let ultimaContaAdicionada = '';
 
 // --- LÓGICA DE SALVAR / EDITAR NA NUVEM ---
 form.addEventListener('submit', async function(evento) {
@@ -1205,7 +850,6 @@ const dados = {
         valor: parseFloat(document.getElementById('valor').value),
         tipo: document.getElementById('tipo').value,
         data: document.getElementById('data').value || getDataHoje(),
-        conta: document.getElementById('conta').value,
         categoria: document.getElementById('categoria').value,
         userId: auth.currentUser.uid, 
         nomeUsuario: auth.currentUser.displayName || "Operador",
@@ -1237,22 +881,22 @@ const dados = {
             indexParaRolar = novoDoc.id; 
             ultimaCategoriaAdicionada = dados.categoria; 
             ultimaDataAdicionada = dados.data; 
+            
+            // === ADICIONE ESTAS DUAS LINHAS ===
             ultimoTipoAdicionado = dados.tipo;
             ultimoStatusAdicionado = dados.status;
-            ultimaContaAdicionada = dados.conta; 
         }
 
         // ATENÇÃO: Repare que já não usamos localStorage aqui! 
         // O onSnapshot lá em cima vai perceber a mudança e atualizar a tela sozinho.
 
-form.reset();
+        form.reset();
         removerAnexo();
         document.getElementById('data').value = ultimaDataAdicionada;
         document.getElementById('categoria').value = ultimaCategoriaAdicionada;
-        
-        // ADICIONE ESTA LINHA AQUI:
-        if (ultimaContaAdicionada) document.getElementById('conta').value = ultimaContaAdicionada;
+        atualizarCorDaCaixaDeSelecao();
 
+        // === ADICIONE ESTE BLOCO AQUI ===
         if (typeof ultimoTipoAdicionado !== 'undefined') {
             document.getElementById('tipo').value = ultimoTipoAdicionado;
         }
@@ -1303,62 +947,31 @@ function exportarDados() {
     a.click();
 }
 
-async function importarDados(event) {
+function importarDados(event) {
     const arquivo = event.target.files[0];
     if (!arquivo) return;
 
     const leitor = new FileReader();
-    leitor.onload = async function(e) {
+    leitor.onload = function(e) {
         try {
             const dados = JSON.parse(e.target.result);
-            
-            if (confirm("Isso irá ADICIONAR os dados do arquivo ao seu banco de dados na nuvem. Deseja continuar?")) {
-                const btnStatus = event.target.parentElement; // Para dar feedback visual
-                const textoOriginal = btnStatus.innerHTML;
-                btnStatus.innerText = "Importando para Nuvem...";
+            if (confirm("Isso irá substituir todos os dados atuais. Deseja continuar?")) {
+                transacoes = dados.transacoes || [];
+                categorias = dados.categorias || [];
+                coresCategorias = dados.cores || {};
+                metaNome = dados.meta?.nome || 'Meta do Período';
+                metaFinanceira = dados.meta?.valor || 0;
 
-                // 1. IMPORTAR CATEGORIAS
-                if (dados.categorias && Array.isArray(dados.categorias)) {
-                    for (const catNome of dados.categorias) {
-                        // Verifica se é uma categoria nova (não Geral)
-                        if (catNome !== 'Geral') {
-                            const cor = dados.cores ? dados.cores[catNome] : '#b2bec3';
-                            await addDoc(categoriasRef, {
-                                nome: catNome,
-                                cor: cor,
-                                criadoEm: Date.now(),
-                                userId: auth.currentUser.uid
-                            });
-                        }
-                    }
-                }
+                localStorage.setItem('bancoDashboard', JSON.stringify(transacoes));
+                localStorage.setItem('categoriasDashboard', JSON.stringify(categorias));
+                localStorage.setItem('coresDashboardCores', JSON.stringify(coresCategorias));
+                localStorage.setItem('metaNome', metaNome);
+                localStorage.setItem('metaFinanceira', metaFinanceira);
 
-                // 2. IMPORTAR TRANSAÇÕES
-                if (dados.transacoes && Array.isArray(dados.transacoes)) {
-                    for (const t of dados.transacoes) {
-                        // Criamos um novo objeto limpando IDs antigos para não dar conflito
-                        const novaTransacao = {
-                            descricao: t.descricao,
-                            valor: t.valor,
-                            tipo: t.tipo,
-                            data: t.data,
-                            categoria: t.categoria,
-                            conta: t.conta || "Sem Conta",
-                            status: t.status || "pago",
-                            nomeUsuario: t.nomeUsuario || auth.currentUser.displayName,
-                            userId: auth.currentUser.uid,
-                            timestamp: t.timestamp || Date.now()
-                        };
-                        await addDoc(transacoesRef, novaTransacao);
-                    }
-                }
-
-                alert("Importação concluída com sucesso! Os dados agora estão na nuvem.");
-                location.reload(); 
+                location.reload(); // Recarrega para aplicar tudo
             }
         } catch (err) {
-            console.error("Erro na importação:", err);
-            alert("Erro ao ler o arquivo. Certifique-se de que é um JSON válido gerado pelo sistema.");
+            alert("Erro ao ler o arquivo de backup.");
         }
     };
     leitor.readAsText(arquivo);
@@ -1503,39 +1116,12 @@ function fecharModalQR() {
 if (typeof fecharModal !== 'undefined') window.fecharModal = fecharModal;
 if (typeof salvarCategoria !== 'undefined') window.salvarCategoria = salvarCategoria;
 
-// ==========================================
-// ATALHOS DE TECLADO (DIGITAÇÃO RÁPIDA)
-// ==========================================
-
-// 1. Ouve o "Enter" no Modal de Contas
-const inputNomeConta = document.getElementById('nome-nova-conta');
-if (inputNomeConta) {
-    inputNomeConta.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Impede bugar a tela
-            document.getElementById('btn-salvar-conta').click();
-        }
-    });
-}
-
-// 2. Ouve o "Enter" no Modal de Categorias
-const inputNovaCategoria = document.getElementById('nova-categoria');
-if (inputNovaCategoria) {
-    inputNovaCategoria.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            salvarCategoria();
-        }
-    });
-}
-
 // --- 12. A CHAVE MESTRA: EXPORTANDO FUNÇÕES PARA O HTML ---
 window.toggleTheme = toggleTheme;
 window.definirMeta = definirMeta;
 window.abrirModal = abrirModal;
 window.fecharModal = fecharModal;
-window.salvarCategoria = salvarCategoria; // MUDOU AQUI
-window.prepararEdicaoCategoria = prepararEdicaoCategoria; // MUDOU AQUI
+window.adicionarCategoria = adicionarCategoria;
 window.removerCategoria = removerCategoria;
 window.prepararEdicao = prepararEdicao;
 window.removerTransacao = removerTransacao;
@@ -1552,4 +1138,5 @@ window.uploadTradicional = uploadTradicional;
 window.removerAnexo = removerAnexo;
 
 // --- 9. INICIA O SISTEMA ---
+atualizarListasDeCategorias();
 atualizarTela();

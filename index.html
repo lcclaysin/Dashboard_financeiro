@@ -22,7 +22,7 @@
     <div id="login-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--fundo); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
         <div style="background: var(--cartao); padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; max-width: 350px; width: 90%;">
             <i class="fa-solid fa-vault" style="font-size: 40px; color: var(--cor-primaria); margin-bottom: 20px;"></i>
-            <h2 style="margin-bottom: 25px; color: var(--texto);">BEM VINDO</h2>
+            <h2 style="margin-bottom: 25px; color: var(--texto);">Acesso Restrito</h2>
             
             <form id="form-login" style="display: flex; flex-direction: column; gap: 15px;">
                 <input type="email" id="email-login" placeholder="E-mail" required style="padding: 12px; border-radius: 10px; border: 1px solid #dfe6e9; background: var(--fundo); color: var(--texto);">
@@ -57,17 +57,6 @@
             </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px;">
-            <h2 style="margin: 0; font-size: 18px; color: var(--texto); font-weight: 700;">Minhas Contas</h2>
-            <button id="btn-ocultar-saldos" onclick="toggleSaldos()" style="background: transparent; border: none; color: var(--texto-secundario); font-size: 18px; cursor: pointer; transition: 0.3s;" title="Ocultar/Mostrar Valores">
-                <i class="fa-solid fa-eye"></i>
-            </button>
-        </div>
-
-        <div id="carrossel-contas" class="carrossel-contas">
-            </div>
-
-
         <div class="resumo-grid">
             <div class="card">
                 <h3>Receitas</h3>
@@ -95,36 +84,15 @@
 
         <div class="meio-grid">
             <div class="form-container">
-                <div style="margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h3 style="margin: 0;">Novo Lançamento</h3>
+                    <button type="button" onclick="abrirModal()" style="background: transparent; color: #0984e3; border: none; cursor: pointer; text-decoration: underline; font-size: 13px;">+ Categorias</button>
                 </div>
                 <form id="form-transacao">
                     <input type="text" id="descricao" placeholder="Descrição (ex: Corrida, Venda)" required>
                     <input type="number" id="valor" placeholder="Valor (R$)" step="0.01" required>
                     <input type="date" id="data" required>
-
-                    <div style="margin-bottom: 12px;">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <select id="conta" onchange="atualizarCorDaConta()" style="flex: 1; margin-bottom: 0; border: 1px solid #dfe6e9; border-left: 5px solid #b2bec3; border-radius: 8px; padding: 12px; cursor: pointer; color: var(--texto);">
-                                <option value="" disabled selected>Carregando contas...</option>
-                            </select>
-                            
-                            <button type="button" id="btn-abrir-modal-conta" style="background: var(--gradiente-btn); color: white; border: none; width: 48px; min-width: 48px; height: 50px; border-radius: 10px; cursor: pointer; font-weight: bold; flex-shrink: 0; padding: 0; display: flex; align-items: center; justify-content: center;" title="Organizar Bancos">
-                                <i class="fa-solid fa-plus"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 12px;">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <select id="categoria" required onchange="atualizarCorDaCaixaDeSelecao()" style="flex: 1; margin-bottom: 0; border: 1px solid #dfe6e9; border-left: 5px solid var(--cor-primaria); border-radius: 8px; padding: 12px; cursor: pointer; color: var(--texto);">
-                            </select>
-                            
-                            <button type="button" onclick="abrirModal()" style="background: var(--gradiente-btn); color: white; border: none; width: 48px; min-width: 48px; height: 46px; border-radius: 10px; cursor: pointer; font-weight: bold; flex-shrink: 0; padding: 0; display: flex; align-items: center; justify-content: center;" title="Organizar Categorias">
-                                <i class="fa-solid fa-plus"></i>
-                            </button>
-                        </div>
-                    </div>
+                    <select id="categoria" required></select>
                     
                     <select id="tipo" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #dfe6e9; color: var(--texto);">
                         <option value="receita">Receita (Entrada)</option>
@@ -156,7 +124,7 @@
                         </div>
                         <div id="upload-status" style="font-size: 11px; color: #636e72; margin-top: 10px; display: none;">Enviando...</div>
                     </div>
-                    <button type="submit" id="btn-salvar-transacao" style="width: 100%; padding: 12px 15px; margin-bottom: 12px; border: 1px solid #edf2f7; border-radius: 10px; box-sizing: border-box; background-color: #f8f9fa; font-family: 'Poppins', sans-serif; transition: 0.3s;">Adicionar</button>
+                    <button type="submit" id="btn-salvar-transacao">Adicionar</button>
                 </form>
             </div>
 
@@ -213,13 +181,6 @@
                                 </select>
                             </div>
 
-                            <div style="display: flex; flex-direction: column; width: 100%; max-width: 200px;">
-                                <label style="font-size: 10px; color: var(--texto-secundario); font-weight: 700; margin-bottom: 5px; text-transform: uppercase;">Conta / Banco</label>
-                                <select id="filtro-conta" style="width: 100%;">
-                                    <option value="todas">Todas as Contas</option>
-                                </select>
-                            </div>
-
                             <div class="campo-filtro">
                                 <label style="display: block; margin-bottom: 6px; font-size: 11px; color: var(--texto-secundario); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Data Inicial</label>
                                 <input type="date" id="filtro-data-inicio" onchange="atualizarTela()" style="width: 100%; box-sizing: border-box; padding: 9px; border-radius: 8px; border: 1px solid #dfe6e9; background: var(--fundo); color: var(--texto); outline: none;">
@@ -271,9 +232,7 @@
                     <tr>
                         <th>Data</th>
                         <th>Descrição</th>
-                        <th>Status</th>
-                        <th>Categoria</th>
-                        <th>Conta</th>
+                        <th>Status</th> <th>Categoria</th>
                         <th>Tipo</th>
                         <th>Valor</th>
                         <th>Ações</th>
@@ -284,38 +243,22 @@
         </div>
     </div>
 
-    <div id="modal-contas" class="modal-overlay">
-        <div class="modal-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(150,150,150,0.2); padding-bottom: 15px;">
-                <h3 style="margin: 0; font-size: 18px; color: var(--texto);">Organizar Contas</h3>
-                <button class="btn-fechar" id="fechar-modal-contas">&times;</button>
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-bottom: 25px; align-items: center;">
-                <input type="color" id="cor-nova-conta" class="cor-picker-btn" value="#8A05BE" title="Cor do Banco">
-                <input type="text" id="nome-nova-conta" placeholder="Nova conta..." style="flex: 1; padding: 10px; border: 1px solid #edf2f7; border-radius: 8px; background: transparent; color: var(--texto); outline: none;">
-                <button type="button" id="btn-salvar-conta" style="background: var(--cor-primaria); color: white; border: none; padding: 0 15px; height: 40px; border-radius: 8px; font-weight: bold; cursor: pointer;">Salvar</button>
-            </div>
-            
-            <ul id="lista-contas" style="list-style: none; padding: 0; max-height: 250px; overflow-y: auto; padding-right: 5px;">
-                </ul>
-        </div>
-    </div>
-
     <div id="modal-categorias" class="modal-overlay">
         <div class="modal-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(150,150,150,0.2); padding-bottom: 15px;">
-                <h3 style="margin: 0; font-size: 18px;">Organizar Categorias</h3>
-                <button class="btn-fechar" onclick="fecharModal()">&times;</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Organizar Categorias</h3>
+                <button onclick="fecharModal()" class="btn-fechar">&times;</button>
             </div>
             
-            <div style="display: flex; gap: 10px; margin-bottom: 25px; align-items: center;">
-                <input type="color" id="cor-categoria" class="cor-picker-btn" value="#0984e3" title="Cor da Categoria">
-                <input type="text" id="nova-categoria" placeholder="Nova categoria..." style="flex: 1; padding: 10px; border: 1px solid #edf2f7; border-radius: 8px; background: transparent; color: var(--texto); outline: none;">
-                <button type="button" onclick="salvarCategoria()" id="btn-salvar-categoria" style="background: var(--cor-primaria); color: white; border: none; padding: 0 15px; height: 40px; border-radius: 8px; font-weight: bold; cursor: pointer;">Salvar</button>
+            <div style="display: flex; gap: 8px; margin-bottom: 15px; align-items: center;">
+                <input type="color" id="cor-categoria" class="cor-picker-btn" value="#0984e3" title="Escolher cor da tag">
+                
+                <input type="text" id="nova-categoria" placeholder="Nova categoria..." onkeypress="if(event.key === 'Enter') adicionarCategoria()" style="flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid #edf2f7; border-radius: 10px; height: 42px; box-sizing: border-box; font-family: inherit; font-size: 14px;">
+                
+                <button onclick="adicionarCategoria()" style="background: var(--cor-primaria); color: white; border: none; padding: 0 12px; border-radius: 10px; height: 42px; cursor: pointer; font-weight: 600; font-size: 14px;">Salvar</button>
             </div>
-            
-            <div id="lista-categorias-modal" style="max-height: 250px; overflow-y: auto; padding-right: 5px;"></div>
+
+            <ul id="lista-categorias" style="list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto;"></ul>
         </div>
     </div>
 
