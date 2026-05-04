@@ -41,7 +41,7 @@ const nomeColecaoCarteiras = rodandoNoComputador ? "carteiras_empresa_teste" : "
 const carteirasRef = collection(db, nomeColecaoCarteiras);
 let sortableContasInstance = null;
 
-const nomeDaColecao = rodandoNoComputador ? "Empresa_Teste" : "Empresa_Oficial";
+const nomeDaColecao = rodandoNoComputador ? "privado_Teste" : "privado";
 const transacoesRef = collection(db, nomeDaColecao);
 
 if (rodandoNoComputador) {
