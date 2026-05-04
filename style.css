@@ -116,6 +116,70 @@ h1 {
     transition: transform 0.3s ease, box-shadow 0.3s ease; /* Animação suave */
 }
 
+/* --- CARROSSEL DE CONTAS BANCÁRIAS --- */
+.carrossel-contas {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding: 10px 5px 25px 5px; 
+    margin-bottom: 10px;
+    scrollbar-width: none; 
+    cursor: grab;
+    user-select: none;
+}
+
+.carrossel-contas:active {
+    cursor: grabbing; /* Mãozinha fechada ao clicar e segurar */
+}
+
+.carrossel-contas::-webkit-scrollbar { 
+    display: none; 
+}
+.carrossel-contas::-webkit-scrollbar-thumb { background: #b2bec3; border-radius: 10px; }
+
+.cartao-conta {
+    background-color: var(--card-bg);
+    border: 1px solid #edf2f7;
+    border-radius: 15px;
+    padding: 15px 20px;
+    min-width: 170px;
+    box-shadow: var(--sombra-suave);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+    flex-shrink: 0; /* Impede amassar o cartão */
+}
+/* No Modo Escuro, usamos uma borda sutil */
+body.dark-theme .cartao-conta { border-color: rgba(255,255,255,0.05); }
+
+.cartao-conta:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+.cartao-conta .nome-banco {
+    font-size: 13px;
+    color: var(--texto-secundario);
+    font-weight: 600;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.cartao-conta .saldo-banco {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--texto);
+    transition: 0.3s;
+}
+/* O Borrão de Privacidade */
+.saldo-oculto {
+    filter: blur(6px);
+    user-select: none;
+    opacity: 0.6;
+}
+
 /* Micro-interação: Os cartões sobem ao passar o mouse */
 .card:hover {
     transform: translateY(-5px);
@@ -131,7 +195,7 @@ h1 {
 .meio-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
 
 /* INPUTS MAIS CLEAN (Agora restrito apenas ao formulário principal) */
-#form-transacao input, #form-transacao select, #form-transacao button { 
+#form-transacao input, #form-transacao select { 
     width: 100%; padding: 12px 15px; margin-bottom: 12px; 
     border: 1px solid #edf2f7; border-radius: 10px; 
     box-sizing: border-box; background-color: #f8f9fa;
@@ -150,13 +214,7 @@ h1 {
     transform: translateY(-2px); box-shadow: 0 6px 20px rgba(9, 132, 227, 0.4); 
 }
 
-/* Tira a sombra e o tamanho do botãozinho de + Categorias (Modo Escuro e Claro) */
-button[onclick="abrirModal()"] {
-    width: auto !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    margin: 0 !important;
-}.form-container button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(9, 132, 227, 0.4); }
+
 
 .graficos-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .grafico-box { position: relative; height: 300px; display: flex; justify-content: center; align-items: center; }
